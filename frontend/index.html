@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система опросов и голосований</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css_index.css">
+    <link rel="script" href="index.js">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="login-screen">
+            <div class="logo">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <h1>Система опросов и голосований</h1>
+            <p>Авторизуйтесь как студент для участия в голосованиях</p>
+            
+            <div class="input-group">
+                <label for="studentId">Номер студенческого билета</label>
+                <input type="text" id="studentId" placeholder="Введите номер студенческого">
+            </div>
+            
+            <a href="dashboard.html" class="next_btn" id="next_btn"><button id="loginBtn" class="login-btn">
+                <i class="fas fa-user"></i>
+                Войти
+            </button>
+            </a>
+            
+            <div class="anonymity-notice">
+                <h3><i class="fas fa-shield-alt"></i> Гарантия анонимности</h3>
+                <p>Все голоса полностью анонимны. Ваша личность не будет связана с вашим выбором.</p>
+            </div>
+        </div>
+
+        <!-- Polls List Screen -->
+        <div id="pollsScreen" class="polls-screen">
+            <div class="header">
+                <div class="header-content">
+                    <div class="user-info">
+                        <div class="avatar" id="userAvatar">С</div>
+                        <div class="user-details">
+                            <h3 id="userName">Студент STU12345</h3>
+                            <p>Студент</p>
+                        </div>
+                    </div>
+                    <button id="logoutBtn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Выйти
+                    </button>
+                </div>
+            </div>
+            
+            <div class="polls-header">
+                <h1>Доступные опросы</h1>
+                <p>Выберите опрос для участия или просмотра результатов</p>
+            </div>
+            
+            <div class="polls-grid" id="pollsGrid">
+                <!-- Poll cards will be generated here -->
+            </div>
+        </div>
+
+        <!-- Voting Screen -->
+        <div id="votingScreen" class="voting-screen">
+            <div class="voting-header">
+                <a href="#" id="backToPollsBtn" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Назад к опросам
+                </a>
+                <div class="user-info">
+                    <div class="avatar">С</div>
+                    <div class="user-details">
+                        <h3 id="votingUserName">Студент STU12345</h3>
+                        <p>Студент</p>
+                    </div>
+                    <button id="votingLogoutBtn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="poll-info">
+                <div class="poll-info-header">
+                    <h2 class="poll-info-title" id="currentPollTitle">Выбор темы для курсовой работы</h2>
+                    <div class="anonymity-badge">
+                        <i class="fas fa-user-secret"></i>
+                        Анонимное голосование
+                    </div>
+                </div>
+                <p class="poll-info-description" id="currentPollDescription">Проголосуйте за наиболее интересную тему для курсовой работы по веб-разработке</p>
+                <div class="poll-info-meta">
+                    <span><i class="fas fa-clock"></i> Завершается: <span id="pollEndDate">2024-01-15</span></span>
+                    <span><i class="fas fa-users"></i> <span id="pollTotalVotes">118</span> голосов</span>
+                </div>
+            </div>
+            
+            <div class="options-container">
+                <div class="options-header">
+                    <h2>Выберите вариант ответа:</h2>
+                </div>
+                <div id="optionsList">
+                    <!-- Options will be generated here -->
+                </div>
+                <button id="voteBtn" class="vote-btn" disabled style="background: #d1d5db; color: #9ca3af;">
+                    Проголосовать
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="results-screen">
+            <div class="voting-header">
+                <a href="#" id="backToPollsFromResultsBtn" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Назад к опросам
+                </a>
+                <div class="user-info">
+                    <div class="avatar">С</div>
+                    <div class="user-details">
+                        <h3 id="resultsUserName">Студент STU12345</h3>
+                        <p>Студент</p>
+                    </div>
+                    <button id="resultsLogoutBtn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="poll-info">
+                <div class="poll-info-header">
+                    <h2 class="poll-info-title" id="resultsPollTitle">Выбор темы для курсовой работы</h2>
+                    <div class="anonymity-badge">
+                        <i class="fas fa-user-secret"></i>
+                        Анонимное голосование
+                    </div>
+                </div>
+                <p class="poll-info-description" id="resultsPollDescription">Проголосуйте за наиболее интересную тему для курсовой работы по веб-разработке</p>
+                <div class="poll-info-meta">
+                    <span><i class="fas fa-clock"></i> Завершается: <span id="resultsPollEndDate">2024-01-15</span></span>
+                    <span><i class="fas fa-users"></i> <span id="resultsPollTotalVotes">118</span> голосов</span>
+                </div>
+            </div>
+            
+            <div class="options-container">
+                <div class="results-header">
+                    <h2 class="results-title">Результаты голосования</h2>
+                    <button id="voteAgainBtn" class="vote-again-btn">Проголосовать снова</button>
+                </div>
+                <div id="resultsList">
+                    <!-- Results will be generated here -->
+                </div>
+                
+                <div class="success-notice">
+                    <h3><i class="fas fa-check-circle"></i> Ваш голос учтен!</h3>
+                    <p>Благодарим за участие в голосовании. Результаты обновлены в реальном времени.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmation Screen -->
+        <div id="confirmationScreen" class="confirmation-screen">
+            <div class="voting-header">
+                <a href="#" id="backToPollsFromConfirmationBtn" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Назад к опросам
+                </a>
+                <div class="user-info">
+                    <div class="avatar">С</div>
+                    <div class="user-details">
+                        <h3 id="confirmationUserName">Студент STU12345</h3>
+                        <p>Студент</p>
+                    </div>
+                    <button id="confirmationLogoutBtn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="confirmation-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2 class="confirmation-title">Голос принят!</h2>
+            <p class="confirmation-text">Спасибо за участие в голосовании. Результаты будут показаны через несколько секунд...</p>
+            <div class="loading-bar">
+                <div class="loading-fill"></div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+
