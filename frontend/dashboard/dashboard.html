@@ -6,7 +6,6 @@
     <title>Список опросов - Система голосований</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css_dashboard.css">
-    
 </head>
 <body>
     <div class="container">
@@ -14,13 +13,13 @@
         <header class="header">
             <div class="header-content">
                 <div class="user-info">
-                    <div class="avatar">С</div>
+                    <div class="avatar" id="userAvatar">С</div>
                     <div class="user-details">
-                        <h2>Студент STU12345</h2>
-                        <p>Факультет информатики</p>
+                        <h2 id="userName">Студент</h2>
+                        <p id="userFaculty">Факультет</p>
                     </div>
                 </div>
-                <button class="logout-btn">
+                <button class="logout-btn" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     Выйти
                 </button>
@@ -33,104 +32,18 @@
             <p>Выберите опрос для участия или просмотра результатов. Все голоса полностью анонимны.</p>
         </div>
 
-        <!-- Polls Grid (2ch style) -->
-        <div class="polls-grid">
-            <!-- Poll Card 1 -->
-            <div class="poll-card">
-                <div class="poll-header">
-                    <h3 class="poll-title">Выбор темы для курсовой работы по веб-разработке</h3>
-                    <p class="poll-description">Проголосуйте за наиболее интересную тему для курсовой работы. Результаты повлияют на распределение студентов по проектным группам.</p>
-                </div>
-                <div class="poll-meta">
-                    <div class="poll-stats">
-                        <i class="fas fa-users"></i>
-                        <span>118 голосов</span>
-                    </div>
-                    <div class="poll-info">
-                        <div class="poll-info-item">
-                            <i class="fas fa-clock"></i>
-                            <span>До 15.01.2024</span>
-                        </div>
-                        <div class="poll-info-item">
-                            <i class="fas fa-user-secret"></i>
-                            <span>Анонимно</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="participate-section">
-                    <button class="participate-btn">
-                        <i class="fas fa-vote-yea"></i>
-                        Участвовать в опросе
-                    </button>
-                </div>
-            </div>
-
-            <!-- Poll Card 2 -->
-            <div class="poll-card">
-                <div class="poll-header">
-                    <h3 class="poll-title">Оценка качества преподавания курса "Основы программирования"</h3>
-                    <p class="poll-description">Анонимная оценка преподавателя и качества курса. Ваши отзывы помогут улучшить образовательный процесс.</p>
-                </div>
-                <div class="poll-meta">
-                    <div class="poll-stats">
-                        <i class="fas fa-users"></i>
-                        <span>100 голосов</span>
-                    </div>
-                    <div class="poll-info">
-                        <div class="poll-info-item">
-                            <i class="fas fa-clock"></i>
-                            <span>До 20.01.2024</span>
-                        </div>
-                        <div class="poll-info-item">
-                            <i class="fas fa-user-secret"></i>
-                            <span>Анонимно</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="participate-section">
-                    <button class="participate-btn">
-                        <i class="fas fa-vote-yea"></i>
-                        Участвовать в опросе
-                    </button>
-                </div>
-            </div>
-
-            <!-- Poll Card 3 -->
-            <div class="poll-card">
-                <div class="poll-header">
-                    <h3 class="poll-title">Выбор даты проведения финального экзамена по базам данных</h3>
-                    <p class="poll-description">Проголосуйте за наиболее удобную дату проведения экзамена. Учитывайте свои другие экзамены и расписание.</p>
-                </div>
-                <div class="poll-meta">
-                    <div class="poll-stats">
-                        <i class="fas fa-users"></i>
-                        <span>87 голосов</span>
-                    </div>
-                    <div class="poll-info">
-                        <div class="poll-info-item">
-                            <i class="fas fa-clock"></i>
-                            <span>До 10.01.2024</span>
-                        </div>
-                        <div class="poll-info-item">
-                            <i class="fas fa-user-secret"></i>
-                            <span>Анонимно</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="participate-section">
-                    <button class="participate-btn">
-                        <i class="fas fa-vote-yea"></i>
-                        Участвовать в опросе
-                    </button>
-                </div>
+        <!-- Polls Grid -->
+        <div class="polls-grid" id="pollsGrid">
+            <div class="loading-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Загрузка опросов...</p>
             </div>
         </div>
     </div>
 
+    <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/dataService.js"></script>
-    <script src="../js/config.js"></script>
     <script src="dashboard.js"></script>
 </body>
 </html>
-

@@ -1,9 +1,6 @@
 // js/auth.js
-import Config from './config.js';
-import dataService from './dataService.js';
-
-class AuthService {
-    static async login(studentId) {
+const AuthService = {
+    async login(studentId) {
         try {
             // Пробуем авторизацию через бэкенд
             const response = await fetch(`${Config.API_BASE_URL}/auth/login`, {
@@ -23,50 +20,58 @@ class AuthService {
             console.log('Backend недоступен, используем локальную авторизацию');
             return this.localLogin(studentId);
         }
-    }
+    },
 
-    static localLogin(studentId) {
+    localLogin(studentId) {
         if (studentId.trim()) {
             const userData = {
                 id: studentId,
                 name: `Студент ${studentId}`,
                 faculty: 'Факультет информатики',
-                isLocal: true // пометка для оффлайн режима
+                isLocal: true
             };
             
             this.saveUserData(userData);
             return { success: true, user: userData, isLocal: true };
         }
         return { success: false, error: 'Введите номер студенческого' };
-    }
+    },
 
-    static saveUserData(userData) {
+    saveUserData(userData) {
         localStorage.setItem(Config.STORAGE_KEYS.USER, JSON.stringify(userData));
         localStorage.setItem(Config.STORAGE_KEYS.AUTH, 'true');
-    }
+    },
 
-    static logout() {
+    logout() {
         Object.values(Config.STORAGE_KEYS).forEach(key => {
             localStorage.removeItem(key);
         });
-    }
+        window.location.href = '../index/index.html';
+    },
 
-    static isAuthenticated() {
+    isAuthenticated() {
         return localStorage.getItem(Config.STORAGE_KEYS.AUTH) === 'true';
-    }
+    },
 
-    static getCurrentUser() {
+    getCurrentUser() {
         const userStr = localStorage.getItem(Config.STORAGE_KEYS.USER);
         return userStr ? JSON.parse(userStr) : null;
-    }
+    },
 
-    static requireAuth() {
+    requireAuth() {
         if (!this.isAuthenticated()) {
-            window.location.href = '../index.html';
+            alert('Пожалуйста, авторизуйтесь');
+            window.location.href = '../index/index.html';
             return false;
         }
         return true;
-    }
-}
+    },
 
-export default AuthService;
+    getStudentId() {
+        const user = this.getCurrentUser();
+        return user ? user.id : null;
+    }
+};
+
+// Сделать глобальной
+window.AuthService = AuthService;

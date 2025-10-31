@@ -2,13 +2,12 @@
 class Dashboard {
     constructor() {
         this.polls = [];
-        this.init();
     }
 
     async init() {
         console.log('Dashboard initialized');
         
-        // Проверка авторизации
+        // Проверка авторизации БЕЗ автоматического перенаправления
         if (!this.checkAuth()) return;
 
         // Настраиваем обработчики событий
@@ -27,6 +26,7 @@ class Dashboard {
     checkAuth() {
         const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
         if (!isAuthenticated) {
+            // Показываем сообщение и перенаправляем
             alert('Пожалуйста, авторизуйтесь');
             window.location.href = '../index/index.html';
             return false;
@@ -34,6 +34,7 @@ class Dashboard {
         return true;
     }
 
+    // ... остальные методы без изменений ...
     setupEventListeners() {
         // Logout functionality
         document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -257,5 +258,5 @@ class Dashboard {
 
 // Инициализация dashboard
 document.addEventListener('DOMContentLoaded', () => {
-    new Dashboard();
+    new Dashboard().init();
 });
