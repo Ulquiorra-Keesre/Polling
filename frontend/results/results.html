@@ -6,24 +6,23 @@
     <title>Результаты опроса - Система голосований</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="results.css">
-    <link rel="script" href="results.js">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <a href="../../dashboard/dashboard.html" class="back-btn">
+                <a href="../dashboard/dashboard.html" class="back-btn" id="backBtn">
                     <i class="fas fa-arrow-left"></i>
                     Назад к опросам
                 </a>
                 <div class="user-info">
-                    <div class="avatar">С</div>
+                    <div class="avatar" id="userAvatar">С</div>
                     <div class="user-details">
-                        <h2>Студент STU12345</h2>
-                        <p>Факультет информатики</p>
+                        <h2 id="userName">Студент STU12345</h2>
+                        <p id="userFaculty">Факультет информатики</p>
                     </div>
-                    <button class="logout-btn">
+                    <button class="logout-btn" id="logoutBtn">
                         <i class="fas fa-sign-out-alt"></i>
                         Выйти
                     </button>
@@ -34,24 +33,23 @@
         <!-- Poll Info Card -->
         <div class="poll-info-card">
             <div class="poll-header">
-                <h1 class="poll-title" id="resultsPollTitle">Выбор темы для курсовой работы по веб-разработке</h1>
+                <h1 class="poll-title" id="resultsPollTitle">Загрузка опроса...</h1>
                 <div class="anonymity-badge">
                     <i class="fas fa-user-secret"></i>
                     Анонимное голосование
                 </div>
             </div>
             <p class="poll-description" id="resultsPollDescription">
-                Проголосуйте за наиболее интересную тему для курсовой работы. Результаты повлияют на распределение студентов по проектным группам. 
-                Ваш выбор полностью анонимен и не будет связан с вашей личностью.
+                Загрузка описания опроса...
             </p>
             <div class="poll-meta">
                 <div class="poll-meta-item">
                     <i class="fas fa-clock"></i>
-                    <span>Завершается: 15.01.2024</span>
+                    <span id="pollEndDate">Загрузка...</span>
                 </div>
                 <div class="poll-meta-item">
                     <i class="fas fa-users"></i>
-                    <span id="resultsTotalVotes">119 голосов</span>
+                    <span id="resultsTotalVotes">0 голосов</span>
                 </div>
             </div>
         </div>
@@ -60,11 +58,13 @@
         <div class="results-section">
             <div class="results-header">
                 <h2 class="results-title">Результаты голосования</h2>
-                
             </div>
             
             <div class="results-items" id="resultsItems">
-                <!-- Результаты будут загружены здесь -->
+                <div class="loading-results">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Загрузка результатов...</p>
+                </div>
             </div>
             
             <div class="success-notice">
@@ -77,6 +77,8 @@
         </div>
     </div>
 
+    <script src="../js/auth.js" type="module"></script>
+    <script src="../js/pollManager.js" type="module"></script>
+    <script src="results.js"></script>
 </body>
 </html>
-

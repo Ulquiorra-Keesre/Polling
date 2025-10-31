@@ -127,29 +127,10 @@
         </div>
     </div>
 
-    <script type="module">
-        import AuthService from '../js/auth.js';
-        import dataService from '../js/dataService.js';
-        import '../js/config.js';
-
-        document.querySelectorAll('.participate-btn').forEach((button, index) => {
-            button.addEventListener('click', function() {
-                alert(`Вы выбрали опрос №${index + 1}. В реальном приложении вы перейдете к странице голосования.`);
-            });
-        });
-
-        // Logout
-        document.querySelector('.logout-btn').addEventListener('click', function() {
-            if (confirm('Вы уверены, что хотите выйти из системы?')) {
-                alert('Выход выполнен. В реальном приложении вы вернетесь на страницу авторизации.');
-            }
-        });
-        
-        if (!AuthService.requireAuth()) return;
-        
-        const dashboard = new Dashboard(AuthService, dataService);
-        dashboard.init();
-    </script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/dataService.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="dashboard.js"></script>
 </body>
 </html>
 

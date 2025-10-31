@@ -1,112 +1,144 @@
-// dataService.js
-class DataService {
-    static async getPolls() {
-        try {
-            // Пробуем получить с бэкенда
-            const response = await fetch(`${Config.API_BASE_URL}${Config.ENDPOINTS.POLLS}`);
-            
-            if (response.ok) {
-                const polls = await response.json();
-                // Кэшируем в localStorage
-                localStorage.setItem(Config.STORAGE_KEYS.POLLS_CACHE, JSON.stringify(polls));
-                return polls;
-            }
-        } catch (error) {
-            console.warn('Backend недоступен, используем кэш:', error);
-        }
-        
-        // Fallback на localStorage
-        return this.getCachedPolls();
-    }
+// js/dataService.js
+(function() {
+    const DataService = {
+        baseURL: Config.API_BASE_URL,
 
-    static async vote(pollId, optionId) {
-        const studentId = AuthService.getStudentId();
-        const voteData = { pollId, optionId, studentId };
-        
-        try {
-            const response = await fetch(`${Config.API_BASE_URL}${Config.ENDPOINTS.VOTE}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AuthService.getToken()}`
-                },
-                body: JSON.stringify(voteData)
-            });
-            
-            if (response.ok) {
-                // Успешно отправили на сервер
-                this.removeFromSyncQueue(pollId, studentId);
-                return { success: true, fromServer: true };
-            } else {
-                throw new Error('Server error');
-            }
-        } catch (error) {
-            console.warn('Backend недоступен, сохраняем локально:', error);
-            // Сохраняем локально и добавляем в очередь синхронизации
-            this.saveVoteLocally(pollId, optionId, studentId);
-            this.addToSyncQueue(pollId, optionId, studentId);
-            return { success: true, fromServer: false };
-        }
-    }
-
-    static getCachedPolls() {
-        const cached = localStorage.getItem(Config.STORAGE_KEYS.POLLS_CACHE);
-        return cached ? JSON.parse(cached) : [];
-    }
-
-    static saveVoteLocally(pollId, optionId, studentId) {
-        const voteKey = `vote_${pollId}_${studentId}`;
-        localStorage.setItem(voteKey, optionId);
-        localStorage.setItem(`${voteKey}_time`, new Date().toISOString());
-    }
-
-    static addToSyncQueue(pollId, optionId, studentId) {
-        const queue = JSON.parse(localStorage.getItem(Config.STORAGE_KEYS.SYNC_QUEUE) || '[]');
-        queue.push({
-            pollId,
-            optionId,
-            studentId,
-            timestamp: new Date().toISOString()
-        });
-        localStorage.setItem(Config.STORAGE_KEYS.SYNC_QUEUE, JSON.stringify(queue));
-    }
-
-    static async syncPendingVotes() {
-        const queue = JSON.parse(localStorage.getItem(Config.STORAGE_KEYS.SYNC_QUEUE) || '[]');
-        const successfulSyncs = [];
-        
-        for (const vote of queue) {
+        // Общий метод для HTTP запросов
+        request: async function(endpoint, options = {}) {
             try {
-                const response = await fetch(`${Config.API_BASE_URL}${Config.ENDPOINTS.VOTE}`, {
-                    method: 'POST',
+                const url = `${this.baseURL}${endpoint}`;
+                const defaultOptions = {
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${AuthService.getToken()}`
-                    },
-                    body: JSON.stringify(vote)
+                    }
+                };
+
+                // Добавляем токен авторизации
+                const token = this.getAuthToken();
+                if (token) {
+                    defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(url, { ...defaultOptions, ...options });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API request failed:', error);
+                throw error;
+            }
+        },
+
+        // === АВТОРИЗАЦИЯ ===
+        login: async function(studentId) {
+            return await this.request(Config.ENDPOINTS.AUTH.LOGIN, {
+                method: 'POST',
+                body: JSON.stringify({ studentId })
+            });
+        },
+
+        // === ОПРОСЫ ===
+        getPolls: async function() {
+            try {
+                const polls = await this.request(Config.ENDPOINTS.POLLS.LIST);
+                this.cachePolls(polls);
+                return polls;
+            } catch (error) {
+                console.log('Using cached polls data');
+                return this.getCachedPolls();
+            }
+        },
+
+        getPollById: async function(pollId) {
+            return await this.request(`${Config.ENDPOINTS.POLLS.GET}/${pollId}`);
+        },
+
+        getPollResults: async function(pollId) {
+            return await this.request(`${Config.ENDPOINTS.POLLS.RESULTS}/${pollId}/results`);
+        },
+
+        // === ГОЛОСОВАНИЕ ===
+        vote: async function(pollId, optionId) {
+            const studentId = AuthService.getCurrentUser()?.id;
+            const voteData = {
+                pollId,
+                optionId,
+                studentId,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                const result = await this.request(Config.ENDPOINTS.VOTES.CREATE, {
+                    method: 'POST',
+                    body: JSON.stringify(voteData)
                 });
                 
-                if (response.ok) {
-                    successfulSyncs.push(vote);
-                }
+                this.saveVoteLocally(pollId, optionId);
+                return result;
             } catch (error) {
-                console.warn('Не удалось синхронизировать голос:', vote);
+                console.log('Saving vote locally');
+                this.saveVoteLocally(pollId, optionId);
+                this.addToSyncQueue(voteData);
+                return { success: true, synced: false };
             }
-        }
-        
-        // Удаляем успешно синхронизированные голоса
-        this.removeFromSyncQueue(successfulSyncs);
-        return successfulSyncs.length;
-    }
+        },
 
-    static removeFromSyncQueue(votesToRemove) {
-        const queue = JSON.parse(localStorage.getItem(Config.STORAGE_KEYS.SYNC_QUEUE) || '[]');
-        const newQueue = queue.filter(existingVote => 
-            !votesToRemove.some(voteToRemove => 
-                voteToRemove.pollId === existingVote.pollId && 
-                voteToRemove.studentId === existingVote.studentId
-            )
-        );
-        localStorage.setItem(Config.STORAGE_KEYS.SYNC_QUEUE, JSON.stringify(newQueue));
-    }
-}
+        checkVote: async function(pollId) {
+            const studentId = AuthService.getCurrentUser()?.id;
+            return await this.request(Config.ENDPOINTS.VOTES.CHECK, {
+                method: 'POST',
+                body: JSON.stringify({ pollId, studentId })
+            });
+        },
+
+        // === ЛОКАЛЬНОЕ ХРАНЕНИЕ ===
+        cachePolls: function(polls) {
+            const cacheData = {
+                polls,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(Config.STORAGE_KEYS.POLLS_CACHE, JSON.stringify(cacheData));
+        },
+
+        getCachedPolls: function() {
+            const cached = localStorage.getItem(Config.STORAGE_KEYS.POLLS_CACHE);
+            if (!cached) return [];
+            
+            const cacheData = JSON.parse(cached);
+            const isExpired = Date.now() - cacheData.timestamp > Config.CACHE_DURATION;
+            
+            return isExpired ? [] : cacheData.polls;
+        },
+
+        saveVoteLocally: function(pollId, optionId) {
+            const studentId = AuthService.getCurrentUser()?.id;
+            const voteKey = `vote_${pollId}_${studentId}`;
+            localStorage.setItem(voteKey, optionId);
+        },
+
+        hasVotedLocally: function(pollId) {
+            const studentId = AuthService.getCurrentUser()?.id;
+            const voteKey = `vote_${pollId}_${studentId}`;
+            return localStorage.getItem(voteKey) !== null;
+        },
+
+        addToSyncQueue: function(voteData) {
+            const queue = this.getSyncQueue();
+            queue.push(voteData);
+            localStorage.setItem(Config.STORAGE_KEYS.SYNC_QUEUE, JSON.stringify(queue));
+        },
+
+        getSyncQueue: function() {
+            return JSON.parse(localStorage.getItem(Config.STORAGE_KEYS.SYNC_QUEUE) || '[]');
+        },
+
+        getAuthToken: function() {
+            return localStorage.getItem(Config.STORAGE_KEYS.AUTH_TOKEN);
+        }
+    };
+
+    window.DataService = DataService;
+})();

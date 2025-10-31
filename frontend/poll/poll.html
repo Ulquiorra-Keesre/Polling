@@ -6,7 +6,6 @@
     <title>Голосование - Система опросов</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css_poll.css">
-    <link rel="script" href="poll.js">
 </head>
 <body>
     <div class="container">
@@ -16,15 +15,14 @@
                 <a href="../dashboard/dashboard.html" class="back-btn" id="backBtn">
                     <i class="fas fa-arrow-left"></i>
                     Назад к опросам
-                    
                 </a>
                 <div class="user-info">
                     <div class="avatar">С</div>
                     <div class="user-details">
-                        <h2>Студент STU12345</h2>
-                        <p>Факультет информатики</p>
+                        <h2 id="userName">Студент STU12345</h2>
+                        <p id="userFaculty">Факультет информатики</p>
                     </div>
-                    <button class="logout-btn">
+                    <button class="logout-btn" id="logoutBtn">
                         <i class="fas fa-sign-out-alt"></i>
                         Выйти
                     </button>
@@ -35,24 +33,23 @@
         <!-- Poll Info Card -->
         <div class="poll-info-card">
             <div class="poll-header">
-                <h1 class="poll-title">Выбор темы для курсовой работы по веб-разработке</h1>
+                <h1 class="poll-title" id="pollTitle">Загрузка опроса...</h1>
                 <div class="anonymity-badge">
                     <i class="fas fa-user-secret"></i>
                     Анонимное голосование
                 </div>
             </div>
-            <p class="poll-description">
-                Проголосуйте за наиболее интересную тему для курсовой работы. Результаты повлияют на распределение студентов по проектным группам. 
-                Ваш выбор полностью анонимен и не будет связан с вашей личностью.
+            <p class="poll-description" id="pollDescription">
+                Загрузка описания опроса...
             </p>
             <div class="poll-meta">
                 <div class="poll-meta-item">
                     <i class="fas fa-clock"></i>
-                    <span>Завершается: 15.01.2024</span>
+                    <span id="pollEndDate">Загрузка...</span>
                 </div>
                 <div class="poll-meta-item">
                     <i class="fas fa-users"></i>
-                    <span>118 голосов</span>
+                    <span id="pollTotalVotes">0 голосов</span>
                 </div>
             </div>
         </div>
@@ -65,41 +62,12 @@
             </div>
             
             <div class="option-cards" id="optionCards">
-                <label class="option-card">
-                    <input type="radio" name="vote" value="1" class="option-input">
-                    <div class="option-content">
-                        <div class="option-number">1</div>
-                        <div class="option-text">Разработка мобильного приложения для здоровья</div>
-                    </div>
-                </label>
-                
-                <label class="option-card">
-                    <input type="radio" name="vote" value="2" class="option-input">
-                    <div class="option-content">
-                        <div class="option-number">2</div>
-                        <div class="option-text">Создание системы управления задачами</div>
-                    </div>
-                </label>
-                
-                <label class="option-card">
-                    <input type="radio" name="vote" value="3" class="option-input">
-                    <div class="option-content">
-                        <div class="option-number">3</div>
-                        <div class="option-text">Разработка платформы для онлайн-обучения</div>
-                    </div>
-                </label>
-                
-                <label class="option-card">
-                    <input type="radio" name="vote" value="4" class="option-input">
-                    <div class="option-content">
-                        <div class="option-number">4</div>
-                        <div class="option-text">Создание системы анализа социальных сетей</div>
-                    </div>
-                </label>
+                <!-- Опции будут загружены через JavaScript -->
+                <div class="loading-options">Загрузка вариантов...</div>
             </div>
             
             <div class="vote-button-section">
-                <button class="vote-btn" id="voteBtn">
+                <button class="vote-btn" id="voteBtn" disabled>
                     <i class="fas fa-vote-yea"></i>
                     Проголосовать
                 </button>
@@ -107,57 +75,11 @@
         </div>
     </div>
 
-    <script>
-        // State management
-        let selectedOption = null;
-        const voteBtn = document.getElementById('voteBtn');
-        const optionCards = document.querySelectorAll('.option-card');
-        const optionInputs = document.querySelectorAll('.option-input');
-
-        // Handle option selection
-        optionCards.forEach((card, index) => {
-            card.addEventListener('click', function() {
-                // Remove selected class from all cards
-                optionCards.forEach(c => c.classList.remove('selected'));
-                
-                // Add selected class to clicked card
-                this.classList.add('selected');
-                
-                // Check the corresponding radio input
-                optionInputs[index].checked = true;
-                selectedOption = optionInputs[index].value;
-                
-                // Enable vote button
-                voteBtn.classList.add('active');
-                voteBtn.disabled = false;
-            });
-        });
-
-        // Handle vote button click
-        voteBtn.addEventListener('click', function() {
-            if (selectedOption) {
-                alert(`Вы успешно проголосовали за вариант ${selectedOption}! В реальном приложении вы перейдете к странице результатов.`);
-                // In a real app, this would submit the vote and navigate to results
-            }
-        });
-
-        // Back button functionality
-        document.getElementById('backBtn').addEventListener('click', function(e) {
-            e.preventDefault();
-            if (confirm('Вы уверены, что хотите вернуться к списку опросов? Ваш голос не будет учтен.')) {
-                alert('Возврат к списку опросов. В реальном приложении вы вернетесь на dashboard.');
-            }
-        });
-
-        // Logout functionality
-        document.querySelector('.logout-btn').addEventListener('click', function() {
-            if (confirm('Вы уверены, что хотите выйти из системы?')) {
-                alert('Выход выполнен. В реальном приложении вы вернетесь на страницу авторизации.');
-            }
-        });
-
-        // Initialize vote button as disabled
-        voteBtn.disabled = true;
-    </script>
+    <!-- Подключаем модули -->
+    <script src="../js/auth.js" type="module"></script>
+    <script src="../js/pollManager.js" type="module"></script>
+    
+    <!-- Подключаем основной скрипт страницы -->
+    <script src="poll.js" type="module"></script>
 </body>
 </html>
