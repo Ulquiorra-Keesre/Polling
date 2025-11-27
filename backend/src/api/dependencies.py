@@ -6,6 +6,7 @@ from typing import Annotated
 
 from src.database.connection import get_db
 from src.utils.security import verify_token
+from src.queries.users import get_user_by_student_id, is_admin
 
 # Для JWT аутентификации
 security = HTTPBearer()
@@ -24,6 +25,15 @@ async def get_current_user(
             detail="Неверный или просроченный токен",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    user = await get_user_by_student_id(db, student_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Пользователь не найден",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     return student_id
 
 
@@ -35,12 +45,18 @@ async def get_current_admin(
     student_id: Annotated[str, Depends(get_current_user)],
     db: DatabaseDep
 ) -> str:
-    """
-    Dependency для проверки, что пользователь - администратор
-    """
-    admin_student_ids = {"777"}  #Все Админские ID
     
-    if student_id not in admin_student_ids:
+    #Dependency для проверки, что пользователь - администратор
+    
+    # admin_student_ids = {"777"}  #Все Админские ID
+    
+    # if student_id not in admin_student_ids:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_403_FORBIDDEN,
+    #         detail="Недостаточно прав. Требуются административные права."
+    #     )
+    
+    if not await is_admin(db, student_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Недостаточно прав. Требуются административные права."
