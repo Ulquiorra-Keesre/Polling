@@ -1,59 +1,42 @@
 # backend/src/queries/polls.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from sqlalchemy.orm import selectinload
-from src.models.poll import Poll, Option
-from src.models.poll import PollCreate, PollResponse
-from datetime import datetime
+from typing import List, Optional
 
-async def get_all_polls(db: AsyncSession) -> list[PollResponse]:
-    """Получить все активные опросы"""
-    result = await db.execute(
-        select(Poll)
-        .where(Poll.end_date > datetime.utcnow())
-        .options(selectinload(Poll.options))
-        .order_by(Poll.created_at.desc())
-    )
-    polls = result.scalars().all()
-    return [PollResponse.model_validate(poll) for poll in polls]
+from src.queries.orm import Repository
+from src.models.poll import Poll, PollCreate
 
-async def get_poll_by_id(db: AsyncSession, poll_id: int) -> PollResponse | None:
+async def get_all_polls(db: AsyncSession) -> List[Poll]:
+    """Получить все опросы"""
+    repo = Repository(db)
+    polls = await repo.polls.get_all_with_options()
+    return polls
+
+async def get_poll_by_id(db: AsyncSession, poll_id: int) -> Optional[Poll]:
     """Получить опрос по ID"""
-    result = await db.execute(
-        select(Poll)
-        .where(Poll.id == poll_id)
-        .options(selectinload(Poll.options))
-    )
-    poll = result.scalar_one_or_none()
-    return PollResponse.model_validate(poll) if poll else None
+    repo = Repository(db)
+    poll = await repo.polls.get_by_id_with_details(poll_id)
+    return poll
 
-async def get_poll_results(db: AsyncSession, poll_id: int) -> PollResponse | None:
+async def get_poll_results(db: AsyncSession, poll_id: int) -> Optional[dict]:
     """Получить результаты опроса"""
-    return await get_poll_by_id(db, poll_id)
+    repo = Repository(db)
+    results = await repo.votes.get_poll_results(poll_id)
+    return results
 
-async def create_poll(db: AsyncSession, poll: PollCreate) -> PollResponse:
+async def create_poll(db: AsyncSession, poll_data: PollCreate) -> Poll:
     """Создать новый опрос"""
-    db_poll = Poll(
-        title=poll.title,
-        description=poll.description,
-        end_date=poll.end_date
+    repo = Repository(db)
+    
+    poll = await repo.polls.create_poll_with_options(
+        title=poll_data.title,
+        description=poll_data.description,
+        end_date=poll_data.end_date,
+        options=[option.text for option in poll_data.options]
     )
-    
-    # Добавляем варианты ответов
-    for option in poll.options:
-        db_option = Option(text=option.text)
-        db_poll.options.append(db_option)
-    
-    db.add(db_poll)
-    await db.commit()
-    await db.refresh(db_poll)
-    
-    # Загружаем с options
-    result = await db.execute(
-        select(Poll)
-        .where(Poll.id == db_poll.id)
-        .options(selectinload(Poll.options))
-    )
-    poll_with_options = result.scalar_one()
-    
-    return PollResponse.model_validate(poll_with_options)
+    return poll
+
+async def get_active_polls(db: AsyncSession) -> List[Poll]:
+    """Получить активные опросы"""
+    repo = Repository(db)
+    polls = await repo.polls.get_active_polls()
+    return polls

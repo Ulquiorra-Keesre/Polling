@@ -35,6 +35,10 @@ class UserRepository(DatabaseManager):
             faculty=faculty,
             is_admin=is_admin
         )
+    
+    async def update(self, user_id: int, **data) -> Optional[User]:
+        """Обновить пользователя"""
+        return await super().update(User, user_id, **data)
 
 class PollRepository(DatabaseManager):
     def __init__(self, session: AsyncSession):
