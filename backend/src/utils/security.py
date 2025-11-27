@@ -1,7 +1,7 @@
 # backend/src/utils/security.py
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from config import settings
+from src.config import settings
 
 def create_access_token(data: dict):
     to_encode = data.copy()

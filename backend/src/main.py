@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from src.api.routes import auth, polls, votes
 from src.database.connection import create_tables
-from config import settings
+from src.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
