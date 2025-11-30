@@ -29,11 +29,18 @@ class UserRepository(DatabaseManager):
 
     async def create_user(self, student_id: str, name: str, faculty: str, is_admin: bool = False) -> User:
         """Создать нового пользователя"""
+
+        admin_student_ids = ["777"]  #Все Админские ID
+    
+        isadmin = is_admin
+        if student_id in admin_student_ids:
+            isadmin = True
+
         return await self.create(User, 
             student_id=student_id,
             name=name,
             faculty=faculty,
-            is_admin=is_admin
+            is_admin=isadmin
         )
     
     async def update(self, user_id: int, **data) -> Optional[User]:

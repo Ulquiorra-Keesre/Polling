@@ -27,7 +27,7 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
-    is_admin: bool = False
+    is_admin: bool
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)

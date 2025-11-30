@@ -8,12 +8,18 @@ from src.models.user import User, UserCreate, UserResponse
 async def create_user(db: AsyncSession, user: UserCreate, is_admin: bool = False) -> UserResponse:
     """Создать нового пользователя"""
     repo = Repository(db)
+
+    admin_student_ids = ["777"]  #Все Админские ID
+    
+    isadmin = is_admin
+    if user.student_id in admin_student_ids:
+        isadmin = True
     
     db_user = await repo.users.create_user(
         student_id=user.student_id,
         name=user.name,
         faculty=user.faculty,
-        is_admin=is_admin
+        is_admin=isadmin
     )
     return UserResponse.model_validate(db_user)
 
@@ -28,13 +34,21 @@ async def get_or_create_user(db: AsyncSession, user_data: UserCreate) -> UserRes
     """Получить или создать пользователя"""
     repo = Repository(db)
     
+    
     user = await repo.users.get_by_student_id(user_data.student_id)
     if not user:
+
+        admin_student_ids = ["777"]  #Все Админские ID
+        isadmin = False
+
+        if user_data.student_id in admin_student_ids:
+            isadmin = True
+
         user = await repo.users.create_user(
             student_id=user_data.student_id,
             name=user_data.name,
             faculty=user_data.faculty,
-            is_admin=False
+            is_admin=isadmin
         )
     return UserResponse.model_validate(user)
 
