@@ -71,12 +71,16 @@ const Dashboard = ({ user, onLogout }) => {
 
   const handleCreatePoll = async (pollData) => {
     try {
+
+      const token = localStorage.getItem('auth_token');
+
       const response = await fetch('http://localhost:8000/api/polls/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify(pollData)
       });
 
@@ -86,6 +90,8 @@ const Dashboard = ({ user, onLogout }) => {
         setShowCreateModal(false);
         alert('Опрос успешно создан!');
       } else {
+        const errorText = await response.text();
+        console.error('Error details:', errorText);
         throw new Error('Ошибка при создании опроса');
       }
     } catch (error) {

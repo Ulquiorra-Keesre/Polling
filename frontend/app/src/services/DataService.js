@@ -1,5 +1,5 @@
 // src/services/DataService.js
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://localhost:8000'; 
 const STORAGE_KEYS = {
   POLLS_CACHE: 'polls_cache',
   SYNC_QUEUE: 'sync_queue',
@@ -12,25 +12,30 @@ export const DataService = {
   async request(endpoint, options = {}) {
     try {
       const url = `${API_BASE_URL}${endpoint}`;
+      console.log(`API Request: ${url}`); 
+      
       const defaultOptions = {
         headers: {
           'Content-Type': 'application/json',
         }
       };
 
-      // Добавляем токен авторизации
+      // Токен авторизации
       const token = this.getAuthToken();
       if (token) {
         defaultOptions.headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch(url, { ...defaultOptions, ...options });
+      console.log(`Response status: ${response.status}`); 
       
       if (!response.ok) {
         if (response.status === 401) {
           this.handleUnauthorized();
           throw new Error('Требуется авторизация');
         }
+        const errorText = await response.text();
+        console.error(`Error response: ${errorText}`);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
@@ -43,28 +48,55 @@ export const DataService = {
 
   // === АВТОРИЗАЦИЯ ===
   async login(studentId) {
-    const response = await this.request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        student_id: studentId,
-        name: `Студент ${studentId}`,
-        faculty: 'Факультет информатики'
-      })
-    });
-    
-    if (response.access_token) {
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.access_token);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
-      localStorage.setItem('auth_status', 'true');
+    try {
+      console.log('=== LOGIN ATTEMPT ===');
+      console.log('Student ID:', studentId);
+      
+      
+      const response = await this.request('/api/auth/login', { 
+        method: 'POST',
+        body: JSON.stringify({ 
+          student_id: studentId,
+          name: `Студент ${studentId}`,
+          faculty: 'Факультет информатики'
+        })
+      });
+
+      console.log('Login response:', response);
+      
+      if (response.access_token) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.access_token);
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
+        localStorage.setItem('auth_status', 'true');
+        console.log('Token saved:', response.access_token.substring(0, 20) + '...');
+      }
+      
+      return { 
+        success: true,
+        user: response.user,
+        token: response.access_token
+      };
+    } catch (error) {
+      console.error('DataService.login error:', error);
+      
+      if (error.message && error.message.includes('422')) {
+        return { 
+          success: false, 
+          error: 'Неверный формат данных для авторизации' 
+        };
+      }
+      
+      return { 
+        success: false, 
+        error: error.message || 'Ошибка авторизации' 
+      };
     }
-    
-    return { success: true, user: response.user };
   },
 
   // === ОПРОСЫ ===
   async getPolls() {
     try {
-      const polls = await this.request('/polls');
+      const polls = await this.request('/api/polls'); 
       this.cachePolls(polls);
       return polls;
     } catch (error) {
@@ -75,7 +107,7 @@ export const DataService = {
 
   async getPollById(pollId) {
     try {
-      return await this.request(`/polls/${pollId}`);
+      return await this.request(`/api/polls/${pollId}`); 
     } catch (error) {
       console.warn('Backend недоступен, ищем в кэше:', error);
       const cachedPolls = this.getCachedPolls();
@@ -85,10 +117,23 @@ export const DataService = {
 
   async getPollResults(pollId) {
     try {
-      return await this.request(`/polls/${pollId}/results`);
+      return await this.request(`/api/polls/${pollId}/results`); 
     } catch (error) {
       console.warn('Backend недоступен:', error);
       return null;
+    }
+  },
+
+  // === СОЗДАНИЕ ОПРОСА ===
+  async createPoll(pollData) {
+    try {
+      return await this.request('/api/polls', { 
+        method: 'POST',
+        body: JSON.stringify(pollData)
+      });
+    } catch (error) {
+      console.error('Create poll error:', error);
+      throw error;
     }
   },
 
@@ -106,7 +151,7 @@ export const DataService = {
     };
 
     try {
-      const result = await this.request('/votes', {
+      const result = await this.request('/api/votes', { 
         method: 'POST',
         body: JSON.stringify(voteData)
       });
@@ -125,7 +170,7 @@ export const DataService = {
 
   async checkVote(pollId) {
     try {
-      return await this.request(`/votes/check/${pollId}`);
+      return await this.request(`/api/votes/check/${pollId}`); 
     } catch (error) {
       console.warn('Backend недоступен, проверяем локально:', error);
       return { 
@@ -135,7 +180,7 @@ export const DataService = {
     }
   },
 
-  // === ЛОКАЛЬНОЕ ХРАНЕНИЕ ===
+  // === ЛОКАЛЬНОЕ ХРАНЕНИЕ 
   cachePolls(polls) {
     const cacheData = {
       polls: polls,
@@ -150,7 +195,7 @@ export const DataService = {
     
     try {
       const cacheData = JSON.parse(cached);
-      const isExpired = Date.now() - cacheData.timestamp > (5 * 60 * 1000); // 5 минут
+      const isExpired = Date.now() - cacheData.timestamp > (5 * 60 * 1000); 
       
       return isExpired ? [] : cacheData.polls;
     } catch (error) {
@@ -209,7 +254,7 @@ export const DataService = {
     
     for (const vote of queue) {
       try {
-        await this.request('/votes', {
+        await this.request('/api/votes', { 
           method: 'POST',
           body: JSON.stringify(vote)
         });
@@ -219,7 +264,6 @@ export const DataService = {
       }
     }
     
-    // Удаляем успешно синхронизированные голоса
     successfulSyncs.forEach(vote => {
       this.removeFromSyncQueue(vote.poll_id, vote.student_id);
     });

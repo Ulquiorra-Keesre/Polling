@@ -1,4 +1,3 @@
-# backend/src/api/routes/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
@@ -10,7 +9,7 @@ from src.api.dependencies import DatabaseDep, get_current_user
 
 router = APIRouter()
 
-@router.post("/api/auth/login", response_model=Token, status_code=status.HTTP_200_OK)
+@router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
 async def login(
     user_data: UserCreate,
     db: DatabaseDep
