@@ -1,4 +1,106 @@
-import React, { useState, useEffect } from 'react';
+// import React, { useState, useEffect } from 'react';
+// import { useNavigate } from 'react-router-dom';
+// import { DataService } from '../services/DataService';
+// import { AuthService } from '../services/AuthService';
+// import CreatePollModal from './CreatePollModal';
+// import './Dashboard.css';
+
+// const Dashboard = ({ user, onLogout }) => {
+//   const [polls, setPolls] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState(null);
+//   const [showCreateModal, setShowCreateModal] = useState(false);
+//   const navigate = useNavigate();
+
+//   const isAdmin = AuthService.isAdmin();
+
+//   useEffect(() => {
+//     loadPolls();
+//   }, []);
+
+//   const loadPolls = async () => {
+//     try {
+//       setLoading(true);
+//       const pollsData = await DataService.getPolls();
+//       setPolls(pollsData);
+//     } catch (error) {
+//       console.error('Error loading polls:', error);
+//       setError('Не удалось загрузить опросы');
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handlePollClick = (pollId) => {
+//     const hasVoted = DataService.hasVotedLocally(pollId);
+    
+//     if (hasVoted) {
+//       navigate(`/results/${pollId}`);
+//     } else {
+//       navigate(`/poll/${pollId}`);
+//     }
+//   };
+
+//   const isPollExpired = (endDate) => {
+//     if (!endDate) return false;
+//     return new Date() > new Date(endDate);
+//   };
+
+//   const formatDate = (dateString) => {
+//     if (!dateString) return 'Дата не указана';
+//     try {
+//       const date = new Date(dateString);
+//       const now = new Date();
+      
+//       if (date < now) {
+//         return 'Завершен';
+//       }
+      
+//       const options = { 
+//         year: 'numeric', 
+//         month: 'long', 
+//         day: 'numeric',
+//         hour: '2-digit',
+//         minute: '2-digit'
+//       };
+//       return `До ${date.toLocaleDateString('ru-RU', options)}`;
+//     } catch (error) {
+//       return 'Ошибка даты';
+//     }
+//   };
+
+//   const handleCreatePoll = async (pollData) => {
+//     try {
+
+//       const token = localStorage.getItem('auth_token');
+
+//       const response = await fetch('http://localhost:8000/api/polls/', {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': `Bearer ${token}`
+//         },
+//         credentials: 'include',
+//         body: JSON.stringify(pollData)
+//       });
+
+//       if (response.ok) {
+//         const newPoll = await response.json();
+//         setPolls(prev => [newPoll, ...prev]);
+//         setShowCreateModal(false);
+//         alert('Опрос успешно создан!');
+//       } else {
+//         const errorText = await response.text();
+//         console.error('Error details:', errorText);
+//         throw new Error('Ошибка при создании опроса');
+//       }
+//     } catch (error) {
+//       console.error('Error creating poll:', error);
+//       alert('Ошибка при создании опроса');
+//     }
+//   };
+
+  import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';
 import { AuthService } from '../services/AuthService';
@@ -71,8 +173,24 @@ const Dashboard = ({ user, onLogout }) => {
 
   const handleCreatePoll = async (pollData) => {
     try {
+      console.log('=== CREATING POLL ===');
+      console.log('Poll data:', pollData);
 
       const token = localStorage.getItem('auth_token');
+      console.log('Auth token exists:', !!token);
+      
+      if (!token) {
+        alert('Ошибка авторизации. Войдите заново.');
+        return;
+      }
+
+      const requestData = {
+        title: pollData.title || '',
+        description: pollData.description || '',
+        options: Array.isArray(pollData.options) ? pollData.options : []
+      };
+
+      console.log('Sending to server:', requestData);
 
       const response = await fetch('http://localhost:8000/api/polls/', {
         method: 'POST',
@@ -80,25 +198,53 @@ const Dashboard = ({ user, onLogout }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
-        body: JSON.stringify(pollData)
+        // УБРАНО: credentials: 'include', // <-- ЭТО ВЫЗЫВАЛО CORS ОШИБКУ
+        body: JSON.stringify(requestData)
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', [...response.headers.entries()]);
+
+      // Пытаемся прочитать ответ независимо от статуса
+      let responseData;
+      try {
+        const text = await response.text();
+        console.log('Raw response:', text);
+        responseData = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        alert('Ошибка: не удалось прочитать ответ сервера');
+        return;
+      }
+
+      console.log('Parsed response:', responseData);
+
       if (response.ok) {
-        const newPoll = await response.json();
-        setPolls(prev => [newPoll, ...prev]);
-        setShowCreateModal(false);
-        alert('Опрос успешно создан!');
+        if (responseData.success) {
+          // Обновляем список опросов
+          await loadPolls();
+          setShowCreateModal(false);
+          alert(responseData.message || 'Опрос успешно создан!');
+        } else {
+          alert(responseData.error || 'Неизвестная ошибка при создании опроса');
+        }
       } else {
-        const errorText = await response.text();
-        console.error('Error details:', errorText);
-        throw new Error('Ошибка при создании опроса');
+        // Ошибка сервера
+        alert(responseData.error || `Ошибка сервера: ${response.status}`);
       }
     } catch (error) {
-      console.error('Error creating poll:', error);
-      alert('Ошибка при создании опроса');
+      console.error('Network error:', error);
+      
+      // Проверяем тип ошибки
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        alert('CORS/Network ошибка: Не удалось подключиться к серверу.\n\nПроверьте:\n1. Бэкенд запущен на localhost:8000\n2. Настройки CORS на бэкенде\n3. Нет ли блокировки браузером');
+      } else {
+        alert('Ошибка сети: ' + error.message);
+      }
     }
   };
+
+  // ... остальной код без изменений (рендеринг)
 
   if (loading) {
     return (
