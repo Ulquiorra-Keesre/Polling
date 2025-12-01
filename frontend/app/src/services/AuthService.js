@@ -1,4 +1,3 @@
-// src/services/AuthService.js
 import { DataService } from './DataService';
 
 const STORAGE_KEYS = {
@@ -81,5 +80,11 @@ export const AuthService = {
   getStudentId() {
     const user = this.getCurrentUser();
     return user ? user.student_id : null;
+  },
+
+  isAdmin() {
+    const user = this.getCurrentUser();
+    const adminIds = ['777']; 
+    return user && adminIds.includes(user.student_id);
   }
 };

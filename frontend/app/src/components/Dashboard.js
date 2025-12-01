@@ -1,14 +1,18 @@
-// src/components/Dashboard.js
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';
+import { AuthService } from '../services/AuthService';
+import CreatePollModal from './CreatePollModal';
 import './Dashboard.css';
 
 const Dashboard = ({ user, onLogout }) => {
   const [polls, setPolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
+
+  const isAdmin = AuthService.isAdmin();
 
   useEffect(() => {
     loadPolls();
@@ -65,6 +69,31 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
+  const handleCreatePoll = async (pollData) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/polls/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(pollData)
+      });
+
+      if (response.ok) {
+        const newPoll = await response.json();
+        setPolls(prev => [newPoll, ...prev]);
+        setShowCreateModal(false);
+        alert('Опрос успешно создан!');
+      } else {
+        throw new Error('Ошибка при создании опроса');
+      }
+    } catch (error) {
+      console.error('Error creating poll:', error);
+      alert('Ошибка при создании опроса');
+    }
+  };
+
   if (loading) {
     return (
       <div className="dashboard-container">
@@ -100,8 +129,20 @@ const Dashboard = ({ user, onLogout }) => {
       
       <main className="dashboard-main">
         <div className="dashboard-header">
-          <h1>Доступные опросы</h1>
-          <p>Выберите опрос для участия или просмотра результатов. Все голоса полностью анонимны.</p>
+          <div>
+            <h1>Доступные опросы</h1>
+            <p>Выберите опрос для участия или просмотра результатов. Все голоса полностью анонимны.</p>
+          </div>
+          
+          {isAdmin && (
+            <button 
+              className="create-poll-btn"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <i className="fas fa-plus"></i>
+              Создать опрос
+            </button>
+          )}
         </div>
 
         {polls.length === 0 ? (
@@ -158,6 +199,12 @@ const Dashboard = ({ user, onLogout }) => {
           </div>
         )}
       </main>
+
+      <CreatePollModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreatePoll}
+      />
     </div>
   );
 };
