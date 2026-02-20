@@ -4,7 +4,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional, Dict, Any
 
 from .core import DatabaseManager
-from ..models.user import User
+from ..models.user import User, UserRole
 from ..models.poll import Poll, Option
 from ..models.vote import Vote
 
@@ -14,38 +14,40 @@ class UserRepository(DatabaseManager):
         self.model = User
 
     async def get_by_student_id(self, student_id: str) -> Optional[User]:
-        """Получить пользователя по student_id"""
         result = await self.session.execute(
             select(User).where(User.student_id == student_id)
         )
         return result.scalar_one_or_none()
 
     async def get_admins(self) -> List[User]:
-        """Получить всех администраторов"""
         result = await self.session.execute(
-            select(User).where(User.is_admin == True)
+            select(User).where(User.role == UserRole.ADMIN)
         )
         return result.scalars().all()
 
-    async def create_user(self, student_id: str, name: str, faculty: str, is_admin: bool = False) -> User:
-        """Создать нового пользователя"""
-
-        admin_student_ids = ["777"]  #Все Админские ID
-    
-        isadmin = is_admin
+    async def create_user(self, student_id: str, name: str, faculty: str, role: UserRole = UserRole.USER) -> User:
+        admin_student_ids = ["777"]
+        user_role = role
         if student_id in admin_student_ids:
-            isadmin = True
-
+            user_role = UserRole.ADMIN
+            
         return await self.create(User, 
             student_id=student_id,
             name=name,
             faculty=faculty,
-            is_admin=isadmin
+            role=user_role
         )
     
     async def update(self, user_id: int, **data) -> Optional[User]:
-        """Обновить пользователя"""
         return await super().update(User, user_id, **data)
+
+    async def update_user_role(self, student_id: str, new_role: UserRole) -> Optional[User]:
+        user = await self.get_by_student_id(student_id)
+        if user:
+            user.role = new_role
+            await self.session.commit()
+            await self.session.refresh(user)
+        return user
 
 class PollRepository(DatabaseManager):
     def __init__(self, session: AsyncSession):

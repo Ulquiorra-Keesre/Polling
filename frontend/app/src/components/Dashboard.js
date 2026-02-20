@@ -1,120 +1,20 @@
-// import React, { useState, useEffect } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { DataService } from '../services/DataService';
-// import { AuthService } from '../services/AuthService';
-// import CreatePollModal from './CreatePollModal';
-// import './Dashboard.css';
-
-// const Dashboard = ({ user, onLogout }) => {
-//   const [polls, setPolls] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(null);
-//   const [showCreateModal, setShowCreateModal] = useState(false);
-//   const navigate = useNavigate();
-
-//   const isAdmin = AuthService.isAdmin();
-
-//   useEffect(() => {
-//     loadPolls();
-//   }, []);
-
-//   const loadPolls = async () => {
-//     try {
-//       setLoading(true);
-//       const pollsData = await DataService.getPolls();
-//       setPolls(pollsData);
-//     } catch (error) {
-//       console.error('Error loading polls:', error);
-//       setError('Не удалось загрузить опросы');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handlePollClick = (pollId) => {
-//     const hasVoted = DataService.hasVotedLocally(pollId);
-    
-//     if (hasVoted) {
-//       navigate(`/results/${pollId}`);
-//     } else {
-//       navigate(`/poll/${pollId}`);
-//     }
-//   };
-
-//   const isPollExpired = (endDate) => {
-//     if (!endDate) return false;
-//     return new Date() > new Date(endDate);
-//   };
-
-//   const formatDate = (dateString) => {
-//     if (!dateString) return 'Дата не указана';
-//     try {
-//       const date = new Date(dateString);
-//       const now = new Date();
-      
-//       if (date < now) {
-//         return 'Завершен';
-//       }
-      
-//       const options = { 
-//         year: 'numeric', 
-//         month: 'long', 
-//         day: 'numeric',
-//         hour: '2-digit',
-//         minute: '2-digit'
-//       };
-//       return `До ${date.toLocaleDateString('ru-RU', options)}`;
-//     } catch (error) {
-//       return 'Ошибка даты';
-//     }
-//   };
-
-//   const handleCreatePoll = async (pollData) => {
-//     try {
-
-//       const token = localStorage.getItem('auth_token');
-
-//       const response = await fetch('http://localhost:8000/api/polls/', {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//           'Authorization': `Bearer ${token}`
-//         },
-//         credentials: 'include',
-//         body: JSON.stringify(pollData)
-//       });
-
-//       if (response.ok) {
-//         const newPoll = await response.json();
-//         setPolls(prev => [newPoll, ...prev]);
-//         setShowCreateModal(false);
-//         alert('Опрос успешно создан!');
-//       } else {
-//         const errorText = await response.text();
-//         console.error('Error details:', errorText);
-//         throw new Error('Ошибка при создании опроса');
-//       }
-//     } catch (error) {
-//       console.error('Error creating poll:', error);
-//       alert('Ошибка при создании опроса');
-//     }
-//   };
-
-  import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataService } from '../services/DataService';
-import { AuthService } from '../services/AuthService';
+import { AuthService, USER_ROLES } from '../services/AuthService';
 import CreatePollModal from './CreatePollModal';
 import './Dashboard.css';
 
-const Dashboard = ({ user, onLogout }) => {
+const Dashboard = ({ user, userRole, onLogout, adminView = false }) => {
   const [polls, setPolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
 
-  const isAdmin = AuthService.isAdmin();
+  //Cистему RBAC
+  const canCreatePolls = AuthService.hasRole(USER_ROLES.ADMIN);
+  const canViewResults = AuthService.hasMinimumRole(USER_ROLES.USER);
 
   useEffect(() => {
     loadPolls();
@@ -142,6 +42,7 @@ const Dashboard = ({ user, onLogout }) => {
       navigate(`/poll/${pollId}`);
     }
   };
+
 
   const isPollExpired = (endDate) => {
     if (!endDate) return false;
@@ -172,6 +73,12 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleCreatePoll = async (pollData) => {
+    // 🔹 Дополнительная проверка прав на frontend
+    if (!AuthService.hasRole(USER_ROLES.ADMIN)) {
+      alert('Недостаточно прав для создания опроса');
+      return;
+    }
+
     try {
       console.log('=== CREATING POLL ===');
       console.log('Poll data:', pollData);
@@ -187,7 +94,7 @@ const Dashboard = ({ user, onLogout }) => {
       const requestData = {
         title: pollData.title || '',
         description: pollData.description || '',
-        options: Array.isArray(pollData.options) ? pollData.options : []
+        options: Array.isArray(pollData.options) ? pollData.options.map(opt => opt.text || opt) : []
       };
 
       console.log('Sending to server:', requestData);
@@ -198,14 +105,11 @@ const Dashboard = ({ user, onLogout }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        // УБРАНО: credentials: 'include', // <-- ЭТО ВЫЗЫВАЛО CORS ОШИБКУ
         body: JSON.stringify(requestData)
       });
 
       console.log('Response status:', response.status);
-      console.log('Response headers:', [...response.headers.entries()]);
 
-      // Пытаемся прочитать ответ независимо от статуса
       let responseData;
       try {
         const text = await response.text();
@@ -221,7 +125,6 @@ const Dashboard = ({ user, onLogout }) => {
 
       if (response.ok) {
         if (responseData.success) {
-          // Обновляем список опросов
           await loadPolls();
           setShowCreateModal(false);
           alert(responseData.message || 'Опрос успешно создан!');
@@ -229,13 +132,16 @@ const Dashboard = ({ user, onLogout }) => {
           alert(responseData.error || 'Неизвестная ошибка при создании опроса');
         }
       } else {
-        // Ошибка сервера
-        alert(responseData.error || `Ошибка сервера: ${response.status}`);
+
+        if (response.status === 403) {
+          alert('Доступ запрещён: недостаточно прав для создания опроса');
+        } else {
+          alert(responseData.error || `Ошибка сервера: ${response.status}`);
+        }
       }
     } catch (error) {
       console.error('Network error:', error);
       
-      // Проверяем тип ошибки
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         alert('CORS/Network ошибка: Не удалось подключиться к серверу.\n\nПроверьте:\n1. Бэкенд запущен на localhost:8000\n2. Настройки CORS на бэкенде\n3. Нет ли блокировки браузером');
       } else {
@@ -244,12 +150,10 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
-  // ... остальной код без изменений (рендеринг)
-
   if (loading) {
     return (
       <div className="dashboard-container">
-        <Header user={user} onLogout={onLogout} />
+        <Header user={user} userRole={userRole} onLogout={onLogout} />
         <div className="loading-state">
           <i className="fas fa-spinner fa-spin"></i>
           <p>Загрузка опросов...</p>
@@ -261,7 +165,7 @@ const Dashboard = ({ user, onLogout }) => {
   if (error) {
     return (
       <div className="dashboard-container">
-        <Header user={user} onLogout={onLogout} />
+        <Header user={user} userRole={userRole} onLogout={onLogout} />
         <div className="error-state">
           <i className="fas fa-exclamation-triangle"></i>
           <h3>Ошибка загрузки</h3>
@@ -277,7 +181,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   return (
     <div className="dashboard-container">
-      <Header user={user} onLogout={onLogout} />
+      <Header user={user} userRole={userRole} onLogout={onLogout} />
       
       <main className="dashboard-main">
         <div className="dashboard-header">
@@ -286,7 +190,8 @@ const Dashboard = ({ user, onLogout }) => {
             <p>Выберите опрос для участия или просмотра результатов. Все голоса полностью анонимны.</p>
           </div>
           
-          {isAdmin && (
+          {/* 🔹 Кнопка создания опроса только для админов */}
+          {canCreatePolls && (
             <button 
               className="create-poll-btn"
               onClick={() => setShowCreateModal(true)}
@@ -302,6 +207,15 @@ const Dashboard = ({ user, onLogout }) => {
             <i className="fas fa-inbox"></i>
             <h3>Нет доступных опросов</h3>
             <p>В данный момент нет активных опросов для голосования.</p>
+            {canCreatePolls && (
+              <button 
+                className="create-poll-btn"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <i className="fas fa-plus"></i>
+                Создать первый опрос
+              </button>
+            )}
           </div>
         ) : (
           <div className="polls-grid">
@@ -361,7 +275,7 @@ const Dashboard = ({ user, onLogout }) => {
   );
 };
 
-const Header = ({ user, onLogout }) => (
+const Header = ({ user, userRole, onLogout }) => (
   <header className="header">
     <div className="header-content">
       <div className="user-info">
@@ -369,7 +283,15 @@ const Header = ({ user, onLogout }) => (
           {user?.name ? user.name.charAt(0).toUpperCase() : 'С'}
         </div>
         <div className="user-details">
-          <h2>{user?.name || `Студент ${user?.id}`}</h2>
+          <h2>
+            {user?.name || `Студент ${user?.id}`}
+            {/* 🔹 Бейдж роли */}
+            {userRole && (
+              <span className={`role-badge ${userRole}`}>
+                {userRole === USER_ROLES.ADMIN ? 'Админ' : 'Пользователь'}
+              </span>
+            )}
+          </h2>
           <p>{user?.faculty || 'Факультет информатики'}</p>
         </div>
       </div>

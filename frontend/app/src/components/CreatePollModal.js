@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './CreatePollModal.css';
+import { AuthService, USER_ROLES } from '../services/AuthService';
 
 const CreatePollModal = ({ isOpen, onClose, onCreate }) => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,11 @@ const CreatePollModal = ({ isOpen, onClose, onCreate }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!AuthService.hasRole(USER_ROLES.ADMIN)) {
+    alert('Недостаточно прав для создания опроса');
+    return;
+  }
     
     // Валидация
     if (!formData.title.trim() || !formData.description.trim() || !formData.end_date) {

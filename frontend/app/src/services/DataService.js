@@ -34,6 +34,9 @@ export const DataService = {
           this.handleUnauthorized();
           throw new Error('Требуется авторизация');
         }
+        if (response.status === 403) {
+          throw new Error('Недостаточно прав для выполнения этого действия');
+        }
         const errorText = await response.text();
         console.error(`Error response: ${errorText}`);
         throw new Error(`HTTP error! status: ${response.status}`);

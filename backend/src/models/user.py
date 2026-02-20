@@ -1,7 +1,13 @@
-# backend/src/models/user.py
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Enum
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from src.database.connection import Base
+import enum
+
+class UserRole(enum.Enum):
+    GUEST = "guest"
+    USER = "user"
+    ADMIN = "admin"
 
 class User(Base):
     __tablename__ = "users"
@@ -10,10 +16,11 @@ class User(Base):
     student_id = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     faculty = Column(String, nullable=False)
-    is_admin = Column(Boolean, default=False)
+    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    votes = relationship("Vote", back_populates="user", cascade="all, delete-orphan")
 
-# Pydantic модели
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
@@ -27,10 +34,13 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
-    is_admin: bool
+    role: UserRole
     created_at: datetime
-    
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+
+class UserUpdateRole(BaseModel):
+    role: UserRole
+    model_config = ConfigDict(use_enum_values=True)
 
 class Token(BaseModel):
     access_token: str
