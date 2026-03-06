@@ -1,12 +1,13 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated, List
 
 from src.database.connection import get_db
 from src.utils.security import verify_token
-from src.queries.users import get_user_by_student_id
+from src.services.auth_service import AuthService
 from src.models.user import UserRole
+from datetime import datetime
 
 security = HTTPBearer()
 
@@ -14,7 +15,11 @@ async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)]
 ) -> dict:
-    token_data = verify_token(credentials.credentials)
+    """
+    Dependency для получения текущего пользователя из access токена
+    """
+    token_data = verify_token(credentials.credentials, expected_type="access")
+    
     if not token_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -22,7 +27,16 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user = await get_user_by_student_id(db, token_data["student_id"])
+    if token_data.get("exp", 0) < datetime.utcnow().timestamp():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Токен истёк",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    auth_service = AuthService(db)
+    user = await auth_service.get_user_by_id(token_data["student_id"])
+    
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -32,23 +46,26 @@ async def get_current_user(
     
     return {
         "student_id": token_data["student_id"],
-        "role": user.role if hasattr(user, 'role') else UserRole.USER
+        "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
+        "user": user
     }
 
 def require_role(allowed_roles: List[UserRole]):
+    """
+    Factory для создания dependency проверки роли
+    """
     async def role_checker(
         current_user: Annotated[dict, Depends(get_current_user)]
     ) -> dict:
-        if current_user["role"] not in allowed_roles:
+        if current_user["role"] not in [r.value if hasattr(r, 'value') else str(r) for r in allowed_roles]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Недостаточно прав. Требуется одна из ролей: {[r.value for r in allowed_roles]}"
+                detail=f"Недостаточно прав. Требуется одна из ролей: {[r.value if hasattr(r, 'value') else str(r) for r in allowed_roles]}"
             )
         return current_user
     return role_checker
 
-
-# Тип для аннотаций
+#Типы для аннотаций
 DatabaseDep = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[dict, Depends(get_current_user)]
 CurrentAdmin = Annotated[dict, Depends(require_role([UserRole.ADMIN]))]

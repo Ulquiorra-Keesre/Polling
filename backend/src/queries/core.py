@@ -131,18 +131,24 @@ async def create_tables(async_engine):
 
 async def get_database_status(async_engine):
     """Получить статус базы данных и статистику таблиц"""
-    from src.models.user import User
+    from src.models.user import User, UserRole
     from src.models.poll import Poll, Option
     from src.models.vote import Vote
+    from src.models.token import RefreshToken
     
     async with async_engine.connect() as conn:
-        # Проверяем подключение
         connection_ok = await check_database_connection(async_engine)
         
-        # Получаем количество записей в каждой таблице
         tables_info = {}
         
-        for model, name in [(User, "users"), (Poll, "polls"), (Option, "options"), (Vote, "votes")]:
+        for model, name in [
+            (User, "users"), 
+            (UserRole, "user_roles"),
+            (Poll, "polls"), 
+            (Option, "options"), 
+            (Vote, "votes"),
+            (RefreshToken, "refresh_tokens") 
+        ]:
             try:
                 result = await conn.execute(select(model))
                 count = len(result.scalars().all())

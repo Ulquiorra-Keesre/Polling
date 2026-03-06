@@ -20,6 +20,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     votes = relationship("Vote", back_populates="user", cascade="all, delete-orphan")
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
 
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime

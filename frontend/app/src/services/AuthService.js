@@ -1,10 +1,14 @@
+// frontend/src/services/AuthService.js
 import { DataService } from './DataService';
 
+const USE_FAKE_TOKENS = false;
+
 const STORAGE_KEYS = {
+  ACCESS_TOKEN: 'access_token',
+  REFRESH_TOKEN: 'refresh_token',
   USER: 'user_data',
   AUTH: 'auth_status',
-  AUTH_TOKEN: 'auth_token',
-  USER_ROLE: 'user_role'
+  TOKEN_EXPIRY: 'token_expiry'
 };
 
 export const USER_ROLES = {
@@ -20,103 +24,145 @@ const ROLE_HIERARCHY = {
 };
 
 export const AuthService = {
+
   async login(studentId) {
     try {
       const result = await DataService.login(studentId);
-      if (result.success && result.token) {
-        const role = this.extractRoleFromToken(result.token);
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, result.token);
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(result.user));
-        localStorage.setItem(STORAGE_KEYS.USER_ROLE, role);
+      
+      if (result.success && result.access_token) {
+        this._saveTokens(result.access_token, result.refresh_token, result.expires_in);
+        this._saveUser(result.user);
         localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
-        return { success: true, user: result.user, role: role };
+        
+        return { 
+          success: true, 
+          user: result.user, 
+          role: result.user.role,
+          isLocal: false
+        };
       } else {
-        return this.localLogin(studentId);
+        return { 
+          success: false, 
+          error: result.error || 'Ошибка авторизации' 
+        };
       }
     } catch (error) {
-      console.warn('Backend недоступен, используем локальную авторизацию');
-      return this.localLogin(studentId);
-    }
-  },
-
-localLogin(studentId) {
-    if (studentId.trim()) {
-      const adminIds = ['777'];
-      const role = adminIds.includes(studentId) ? USER_ROLES.ADMIN : USER_ROLES.USER;
-      const userData = {
-        id: studentId,
-        student_id: studentId,
-        name: `Студент ${studentId}`,
-        faculty: 'Факультет информатики',
-        is_local: true
+      console.error('Login failed:', error);
+      
+      return { 
+        success: false, 
+        error: 'Сервер недоступен. Убедитесь, что backend запущен на http://localhost:8000' 
       };
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
-      localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
-      localStorage.setItem(STORAGE_KEYS.USER_ROLE, role);
-      return { success: true, user: userData, role: role, isLocal: true };
     }
-    return { success: false, error: 'Введите номер студенческого' };
   },
 
-  extractRoleFromToken(token) {
+  /**
+   * Обновление access токена через refresh токен
+   */
+  async refreshAccessToken() {
     try {
-      const payload = token.split('.')[1];
-      const decoded = JSON.parse(atob(payload));
-      return decoded.role || USER_ROLES.USER;
+      const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      
+      // Если нет токена или он фейковый — не можем обновить
+      if (!refreshToken || refreshToken.startsWith('fake_token_')) {
+        console.warn('Cannot refresh: no valid refresh token');
+        return false;
+      }
+      
+      const result = await DataService.refreshToken(refreshToken);
+      
+      if (result.success && result.access_token) {
+        this._saveTokens(result.access_token, result.refresh_token, result.expires_in);
+        return true;
+      }
+      
+      return false;
     } catch (error) {
-      console.error('Error parsing token:', error);
-      return USER_ROLES.USER;
+      console.error('Token refresh failed:', error);
+      return false;
     }
   },
 
-  logout() {
-    Object.values(STORAGE_KEYS).forEach(key => {
-      localStorage.removeItem(key);
-    });
-    window.location.href = '/login';
-  },
-
+  /**
+   * Проверка авторизации с авто-обновлением токена
+   */
   async checkAuth() {
     const isAuth = localStorage.getItem(STORAGE_KEYS.AUTH) === 'true';
-    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-    if (isAuth && token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const expiry = payload.exp * 1000;
-        if (Date.now() < expiry) {
-          const role = payload.role || USER_ROLES.USER;
-          localStorage.setItem(STORAGE_KEYS.USER_ROLE, role);
-          return true;
-        }
-      } catch (error) {
-        console.error('Token validation error:', error);
-      }
+    const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    
+    // Если нет авторизации или токена — не авторизован
+    if (!isAuth || !accessToken) {
+      return false;
+    }
+    
+    // Если токен фейковый — не считаем валидным для лабы
+    if (accessToken.startsWith('fake_token_')) {
+      console.warn('Fake token detected, requiring re-auth');
       this.logout();
       return false;
     }
-    return false;
+    
+    // Проверяем, не истёк ли токен
+    const expiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
+    if (expiry && Date.now() >= parseInt(expiry)) {
+      console.log('Access token expired, attempting refresh...');
+      
+      const refreshed = await this.refreshAccessToken();
+      
+      if (!refreshed) {
+        // Не удалось обновить — выходим
+        this.logout();
+        return false;
+      }
+    }
+    
+    return true;
   },
 
-  getCurrentUser() {
-    const userStr = localStorage.getItem(STORAGE_KEYS.USER);
-    return userStr ? JSON.parse(userStr) : null;
+  /**
+   * Выход из системы
+   */
+  async logout() {
+    const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    
+    // Отправляем запрос на сервер только для реальных токенов
+    if (accessToken && !accessToken.startsWith('fake_token_')) {
+      try {
+        await DataService.logout(accessToken);
+      } catch (error) {
+        console.warn('Logout API call failed, clearing local storage anyway');
+      }
+    }
+    
+    // Очищаем localStorage в любом случае
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    // Редирект на страницу входа
+    window.location.href = '/login';
   },
 
-  getStudentId() {
-    const user = this.getCurrentUser();
-    return user ? user.student_id : null;
-  },
-
+  /**
+   * Получение текущей роли пользователя
+   */
   getUserRole() {
-    return localStorage.getItem(STORAGE_KEYS.USER_ROLE) || USER_ROLES.GUEST;
+    const user = this.getCurrentUser();
+    return user?.role || localStorage.getItem('user_role') || USER_ROLES.GUEST;
   },
 
+  /**
+   * Проверка наличия одной из разрешённых ролей
+   */
   hasRole(allowedRoles) {
     const currentRole = this.getUserRole();
     const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
     return roles.includes(currentRole);
   },
 
+  /**
+   * Проверка минимального уровня роли
+   */
   hasMinimumRole(minRole) {
     const currentRole = this.getUserRole();
     const currentLevel = ROLE_HIERARCHY[currentRole] || 0;
@@ -124,11 +170,54 @@ localLogin(studentId) {
     return currentLevel >= minLevel;
   },
 
+  /**
+   * Получение данных текущего пользователя
+   */
+  getCurrentUser() {
+    const userStr = localStorage.getItem(STORAGE_KEYS.USER);
+    return userStr ? JSON.parse(userStr) : null;
+  },
+
+  /**
+   * Получение student_id текущего пользователя
+   */
+  getStudentId() {
+    const user = this.getCurrentUser();
+    return user ? user.student_id : null;
+  },
+
+  /**
+   * Получение access токена
+   */
+  getAccessToken() {
+    return localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+  },
+
+  /**
+   * Проверка на роль администратора
+   */
   isAdmin() {
     return this.hasRole(USER_ROLES.ADMIN);
   },
-  
+
+  /**
+   * Проверка на роль пользователя (user или admin)
+   */
   isUser() {
     return this.hasRole([USER_ROLES.USER, USER_ROLES.ADMIN]);
+  },
+
+  _saveTokens(accessToken, refreshToken, expiresIn) {
+    localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+    
+    // Сохраняем время истечения с запасом 30 секунд
+    const expiryTime = Date.now() + (expiresIn * 1000) - 30000;
+    localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
+  },
+
+  _saveUser(user) {
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+    localStorage.setItem('user_role', user.role);
   }
 };

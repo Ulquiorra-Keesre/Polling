@@ -14,48 +14,75 @@ function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
 
-  useEffect(() => { checkAuth(); }, []);
+  useEffect(() => { 
+    initializeAuth(); 
+  }, []);
 
-  const checkAuth = async () => {
-    const authStatus = await AuthService.checkAuth();
-    setIsAuthenticated(authStatus);
-    if (authStatus) {
-      const userData = AuthService.getCurrentUser();
-      const role = AuthService.getUserRole();
-      setUser(userData);
-      setUserRole(role);
+  const initializeAuth = async () => {
+    try {
+      console.log('App: Initializing auth...');
+      const authStatus = await AuthService.checkAuth();
+      console.log('App: Auth status:', authStatus);
+      
+      setIsAuthenticated(authStatus);
+      
+      if (authStatus) {
+        const userData = AuthService.getCurrentUser();
+        const role = AuthService.getUserRole();
+        console.log('App: User ', userData);
+        console.log('App: Role:', role);
+        setUser(userData);
+        setUserRole(role);
+      }
+    } catch (error) {
+      console.error('App: Initialization error:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+      setInitializing(false);
     }
-    setLoading(false);
   };
 
   const handleLogin = async (studentId) => {
     try {
       setLoading(true);
+      console.log('App: Login attempt for', studentId);
       const result = await AuthService.login(studentId);
+      
       if (result.success) {
+        console.log('App: Login success', result);
         setIsAuthenticated(true);
         setUser(result.user);
         setUserRole(result.role);
         await DataService.syncPendingVotes();
+      } else {
+        console.warn('App: Login failed', result.error);
       }
       return result;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('App: Login error:', error);
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    AuthService.logout();
+  const handleLogout = async () => {
+    console.log('App: Logout');
+    await AuthService.logout();
     setIsAuthenticated(false);
     setUser(null);
     setUserRole(null);
   };
 
-  if (loading) return <div className="loading-screen">Загрузка...</div>;
+  if (loading) {
+    console.log('App: Rendering loading screen');
+    return <div className="loading-screen">Загрузка...</div>;
+  }
+
+  console.log('App: Rendering routes', { isAuthenticated, userRole });
 
   return (
     <Router>

@@ -1,4 +1,3 @@
-# backend/main.py
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,10 +9,15 @@ from src.api.routes import auth, polls, votes
 from src.database.connection import create_tables
 from src.config import settings
 
+from src.models.user import User, UserRole
+from src.models.poll import Poll, Option
+from src.models.vote import Vote
+from src.models.token import RefreshToken
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await create_tables()
+    await create_tables()  
     print("✅ Database tables created")
     yield
     # Shutdown

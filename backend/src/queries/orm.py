@@ -2,11 +2,13 @@ from sqlalchemy import select, and_, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 from .core import DatabaseManager
 from ..models.user import User, UserRole
 from ..models.poll import Poll, Option
 from ..models.vote import Vote
+from ..models.token import RefreshToken
 
 class UserRepository(DatabaseManager):
     def __init__(self, session: AsyncSession):
@@ -244,9 +246,120 @@ class VoteRepository(DatabaseManager):
             ]
         }
 
+class RefreshTokenRepository(DatabaseManager):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session)
+        self.model = RefreshToken
+
+    async def get_by_hash(self, token_hash: str) -> Optional[RefreshToken]:
+        """Получить запись по хэшу токена"""
+        result = await self.session.execute(
+            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_active_by_student_id(self, student_id: str) -> List[RefreshToken]:
+        """
+        Получить активные (неотозванные и неистёкшие) токены пользователя
+        """
+        from datetime import datetime
+        result = await self.session.execute(
+            select(RefreshToken).where(
+                and_(
+                    RefreshToken.student_id == student_id,
+                    RefreshToken.is_revoked == False,
+                    RefreshToken.expires_at > datetime.utcnow()
+                )
+            )
+        )
+        return result.scalars().all()
+
+    async def create_token(self, student_id: str, token_hash: str, 
+                          expires_at: datetime, 
+                          ip_address: str = None, 
+                          user_agent: str = None) -> RefreshToken:
+        """Создать новую запись refresh токена"""
+        return await self.create(
+            RefreshToken,
+            student_id=student_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+
+    async def revoke_by_hash(self, token_hash: str) -> bool:
+        """
+        Отозвать токен по хэшу
+        Возвращает: был ли токен найден и отозван
+        """
+        token = await self.get_by_hash(token_hash)
+        if token and not token.is_revoked:
+            token.is_revoked = True
+            token.last_used_at = datetime.utcnow()
+            await self.session.commit()
+            return True
+        return False
+
+    async def revoke_all_for_user(self, student_id: str) -> int:
+        """
+        Отозвать все активные токены пользователя
+        Возвращает: количество отозванных токенов
+        """
+        from datetime import datetime
+        
+        result = await self.session.execute(
+            select(RefreshToken).where(
+                and_(
+                    RefreshToken.student_id == student_id,
+                    RefreshToken.is_revoked == False
+                )
+            )
+        )
+        tokens = result.scalars().all()
+        
+        revoked_count = 0
+        for token in tokens:
+            token.is_revoked = True
+            token.last_used_at = datetime.utcnow()
+            revoked_count += 1
+        
+        if revoked_count > 0:
+            await self.session.commit()
+        
+        return revoked_count
+
+    async def cleanup_expired(self) -> int:
+        """
+        Удалить истёкшие токены из БД (для очистки)
+        Возвращает: количество удалённых записей
+        """
+        from datetime import datetime
+        
+        result = await self.session.execute(
+            select(RefreshToken).where(
+                and_(
+                    RefreshToken.expires_at < datetime.utcnow(),
+                    RefreshToken.is_revoked == True 
+                )
+            )
+        )
+        expired_tokens = result.scalars().all()
+        
+        deleted_count = 0
+        for token in expired_tokens:
+            await self.session.delete(token)
+            deleted_count += 1
+        
+        if deleted_count > 0:
+            await self.session.commit()
+        
+        return deleted_count
+
 class Repository:
     def __init__(self, session: AsyncSession):
         self.users = UserRepository(session)
         self.polls = PollRepository(session)
         self.options = OptionRepository(session)
         self.votes = VoteRepository(session)
+        self.refresh_tokens = RefreshTokenRepository(session)
