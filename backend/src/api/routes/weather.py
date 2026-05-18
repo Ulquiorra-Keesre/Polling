@@ -8,15 +8,16 @@ router = APIRouter(tags=["Weather"])
 OPENWEATHER_API_KEY = settings.OPENWEATHER_API_KEY
 OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5"
 
+
 @router.get("/current")
 async def get_current_weather(city: str = Query(default="Moscow", max_length=100)):
-    
+
     if not OPENWEATHER_API_KEY:
         return _fallback(city, "API ключ не настроен")
-    
+
     try:
         print(f"Making request to {OPENWEATHER_BASE_URL}/weather")
-        
+
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
                 f"{OPENWEATHER_BASE_URL}/weather",
@@ -24,15 +25,15 @@ async def get_current_weather(city: str = Query(default="Moscow", max_length=100
                     "q": city,
                     "appid": OPENWEATHER_API_KEY,
                     "units": "metric",
-                    "lang": "ru"
-                }
+                    "lang": "ru",
+                },
             )
-            
+
             if response.status_code != 200:
                 return _fallback(city, f"HTTP {response.status_code}")
-            
+
             data = response.json()
-            
+
             return {
                 "success": True,
                 "data": {
@@ -43,10 +44,10 @@ async def get_current_weather(city: str = Query(default="Moscow", max_length=100
                     "icon": data.get("weather", [{}])[0].get("icon"),
                     "humidity": data.get("main", {}).get("humidity"),
                     "wind_speed": data.get("wind", {}).get("speed"),
-                    "is_fallback": False
-                }
+                    "is_fallback": False,
+                },
             }
-            
+
     except Exception as e:
         print(f"ERROR: {type(e).__name__}: {e}")
         print(f"Traceback:\n{traceback.format_exc()}")
@@ -65,6 +66,6 @@ def _fallback(city: str, warning: str) -> dict:
             "humidity": None,
             "wind_speed": None,
             "is_fallback": True,
-            "warning": warning
-        }
+            "warning": warning,
+        },
     }

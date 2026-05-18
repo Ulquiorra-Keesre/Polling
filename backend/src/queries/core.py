@@ -1,4 +1,4 @@
-from sqlalchemy import select, insert, update, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.engine import Result
 from typing import List, Optional, Any, Type, TypeVar
@@ -7,7 +7,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Generic type
-ModelType = TypeVar('ModelType')
+ModelType = TypeVar("ModelType")
+
 
 class DatabaseManager:
     def __init__(self, session: AsyncSession):
@@ -22,11 +23,11 @@ class DatabaseManager:
         result = await self.session.execute(select(model))
         return result.scalars().all()
 
-    async def get_by_id(self, model: Type[ModelType], record_id: int) -> Optional[ModelType]:
+    async def get_by_id(
+        self, model: Type[ModelType], record_id: int
+    ) -> Optional[ModelType]:
         """Получить запись по ID"""
-        result = await self.session.execute(
-            select(model).where(model.id == record_id)
-        )
+        result = await self.session.execute(select(model).where(model.id == record_id))
         return result.scalar_one_or_none()
 
     async def create(self, model: Type[ModelType], **data) -> ModelType:
@@ -42,23 +43,27 @@ class DatabaseManager:
             logger.error(f"Error creating record in {model.__name__}: {e}")
             raise
 
-    async def bulk_create(self, model: Type[ModelType], data_list: List[dict]) -> List[ModelType]:
+    async def bulk_create(
+        self, model: Type[ModelType], data_list: List[dict]
+    ) -> List[ModelType]:
         """Создать несколько записей"""
         try:
             instances = [model(**data) for data in data_list]
             self.session.add_all(instances)
             await self.session.commit()
-            
+
             for instance in instances:
                 await self.session.refresh(instance)
-                
+
             return instances
         except Exception as e:
             await self.session.rollback()
             logger.error(f"Error bulk creating records in {model.__name__}: {e}")
             raise
 
-    async def update(self, model: Type[ModelType], record_id: int, **data) -> Optional[ModelType]:
+    async def update(
+        self, model: Type[ModelType], record_id: int, **data
+    ) -> Optional[ModelType]:
         """Обновить запись"""
         try:
             instance = await self.get_by_id(model, record_id)
@@ -87,14 +92,18 @@ class DatabaseManager:
             logger.error(f"Error deleting record in {model.__name__}: {e}")
             raise
 
-    async def get_by_field(self, model: Type[ModelType], field_name: str, value: Any) -> Optional[ModelType]:
+    async def get_by_field(
+        self, model: Type[ModelType], field_name: str, value: Any
+    ) -> Optional[ModelType]:
         """Получить запись по значению поля"""
         result = await self.session.execute(
             select(model).where(getattr(model, field_name) == value)
         )
         return result.scalar_one_or_none()
 
-    async def get_many_by_field(self, model: Type[ModelType], field_name: str, value: Any) -> List[ModelType]:
+    async def get_many_by_field(
+        self, model: Type[ModelType], field_name: str, value: Any
+    ) -> List[ModelType]:
         """Получить несколько записей по значению поля"""
         result = await self.session.execute(
             select(model).where(getattr(model, field_name) == value)
@@ -111,6 +120,7 @@ class DatabaseManager:
         result = await self.session.execute(select(model))
         return len(result.scalars().all())
 
+
 async def check_database_connection(async_engine):
     """Проверить подключение к базе данных"""
     async with async_engine.connect() as conn:
@@ -119,13 +129,16 @@ async def check_database_connection(async_engine):
         logger.info("Database connection successful")
         return version
 
+
 async def create_tables(async_engine):
     """Создать все таблицы"""
     from src.database.connection import Base
+
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     logger.info("All tables created successfully")
+
 
 async def get_database_status(async_engine):
     """Получить статус базы данных и статистику таблиц"""
@@ -134,20 +147,20 @@ async def get_database_status(async_engine):
     from src.models.vote import Vote
     from src.models.token import RefreshToken
     from src.models.file import FileMetadata
-    
+
     async with async_engine.connect() as conn:
         connection_ok = await check_database_connection(async_engine)
-        
+
         tables_info = {}
-        
+
         for model, name in [
-            (User, "users"), 
+            (User, "users"),
             (UserRole, "user_roles"),
-            (Poll, "polls"), 
-            (Option, "options"), 
+            (Poll, "polls"),
+            (Option, "options"),
             (Vote, "votes"),
             (RefreshToken, "refresh_tokens"),
-            (FileMetadata, "files")
+            (FileMetadata, "files"),
         ]:
             try:
                 result = await conn.execute(select(model))
@@ -155,8 +168,8 @@ async def get_database_status(async_engine):
                 tables_info[name] = count
             except Exception as e:
                 tables_info[name] = f"error: {e}"
-        
+
         return {
             "connection": "ok" if connection_ok else "failed",
-            "tables": tables_info
+            "tables": tables_info,
         }

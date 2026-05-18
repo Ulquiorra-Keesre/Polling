@@ -7,7 +7,6 @@ import asyncio
 import pytest
 import pytest_asyncio
 from typing import AsyncGenerator
-from datetime import datetime, timezone
 
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -29,8 +28,9 @@ if sys.platform == "win32":
 # Если тестовая БД не создана — создайте: createdb -U postgres poll_system_test
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:1878@localhost:5432/poll_system_test"
+    "postgresql+asyncpg://postgres:1878@localhost:5432/poll_system_test",
 )
+
 
 # =============================================================================
 # 🔹 ТЕСТОВЫЙ ДВИЖОК БД (function scope для изоляции)
@@ -43,18 +43,19 @@ async def test_engine():
         poolclass=NullPool,  # Без пула для тестов — чище
         echo=False,
     )
-    
+
     # Создаём таблицы
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield engine
-    
+
     # Очищаем после теста (изоляция)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await engine.dispose()
+
 
 # =============================================================================
 # 🔹 СЕССИЯ С ТРАНЗАКЦИЕЙ (function scope)
@@ -68,7 +69,7 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
         expire_on_commit=False,
         autoflush=False,
     )
-    
+
     async with async_session() as session:
         # 🔹 Явно начинаем транзакцию (НЕ как контекстный менеджер!)
         await session.begin()
@@ -79,49 +80,56 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
             # 🔹 Откатываем все изменения после теста (полная изоляция)
             await session.rollback()
 
+
 # =============================================================================
 # 🔹 HTTP КЛИЕНТ (function scope)
 # =============================================================================
 @pytest_asyncio.fixture(scope="function")
 async def client(test_session) -> AsyncGenerator[AsyncClient, None]:
     """Async HTTP client с переопределённой зависимостью get_db"""
-    
+
     # Переопределяем get_db для использования тестовой сессии
     async def override_get_db():
         yield test_session
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
         timeout=30.0,
-        follow_redirects=True  # 🔹 🔥 ДОБАВЛЕНО: для обработки 307 редиректов! 🔥
+        follow_redirects=True,  # 🔹 🔥 ДОБАВЛЕНО: для обработки 307 редиректов! 🔥
     ) as ac:
         yield ac
-    
+
     # Очищаем переопределения после теста
     app.dependency_overrides.clear()
+
 
 # =============================================================================
 # 🔹 АВТОРИЗОВАННЫЕ КЛИЕНТЫ (function scope)
 # =============================================================================
+
 
 @pytest_asyncio.fixture(scope="function")
 async def authenticated_client(client, test_user_data):
     """Клиент с токеном обычного пользователя (гибкое извлечение токена)"""
     reg = await client.post("/api/auth/register", json=test_user_data)
     reg_data = reg.json()
-    
+
     # 🔹 Гибкое извлечение access_token (поддерживает разные форматы):
-    if "data" in reg_data and isinstance(reg_data["data"], dict) and "access_token" in reg_data["data"]:
+    if (
+        "data" in reg_data
+        and isinstance(reg_data["data"], dict)
+        and "access_token" in reg_data["data"]
+    ):
         token = reg_data["data"]["access_token"]
     elif "access_token" in reg_data:
         token = reg_data["access_token"]
     else:
         # 🔹 Если токен не найден — выводим ответ для отладки:
         pytest.fail(f"access_token not found in response: {reg_data}")
-    
+
     client.headers["Authorization"] = f"Bearer {token}"
     yield client
     client.headers.pop("Authorization", None)
@@ -132,18 +140,23 @@ async def admin_client(client, test_admin_data):
     """Клиент с токеном администратора (гибкое извлечение токена)"""
     reg = await client.post("/api/auth/register", json=test_admin_data)
     reg_data = reg.json()
-    
+
     # 🔹 Гибкое извлечение access_token:
-    if "data" in reg_data and isinstance(reg_data["data"], dict) and "access_token" in reg_data["data"]:
+    if (
+        "data" in reg_data
+        and isinstance(reg_data["data"], dict)
+        and "access_token" in reg_data["data"]
+    ):
         token = reg_data["data"]["access_token"]
     elif "access_token" in reg_data:
         token = reg_data["access_token"]
     else:
         pytest.fail(f"access_token not found in response: {reg_data}")
-    
+
     client.headers["Authorization"] = f"Bearer {token}"
     yield client
     client.headers.pop("Authorization", None)
+
 
 # =============================================================================
 # 🔹 ТЕСТОВЫЕ ДАННЫЕ (синхронные фикстуры — обычный @pytest.fixture)
@@ -156,8 +169,9 @@ def test_user_data():
         "name": "Test User",
         "faculty": "Test Faculty",
         "password": "TestPassword123!",
-        "role": "user"
+        "role": "user",
     }
+
 
 @pytest.fixture
 def test_admin_data():
@@ -167,8 +181,9 @@ def test_admin_data():
         "name": "Test Admin",
         "faculty": "Test Faculty",
         "password": "AdminPassword123!",
-        "role": "admin"
+        "role": "admin",
     }
+
 
 @pytest.fixture
 def test_poll_data():
@@ -180,7 +195,7 @@ def test_poll_data():
         "options": [
             {"text": "Вариант 1"},
             {"text": "Вариант 2"},
-        ]
+        ],
     }
 
 
@@ -192,6 +207,7 @@ def test_poll_data():
 
 # tests/conftest.py - замените фикстуру test_banner_file на эту:
 
+
 @pytest_asyncio.fixture(scope="function")
 async def test_banner_file(test_session: AsyncSession):
     """
@@ -201,17 +217,17 @@ async def test_banner_file(test_session: AsyncSession):
     from src.models.file import FileMetadata
     from src.models.user import User, UserRole  # ← Импортируйте User!
     from sqlalchemy import select
-    
+
     # 🔹 Шаг 1: Создаём тестового пользователя (если нужно)
     # Используем уникальный student_id, чтобы не конфликтовать с другими тестами
     test_student_id = "FILE_TEST_USER_9999"
-    
+
     # Проверяем, существует ли уже пользователь
     existing_user = await test_session.execute(
         select(User).where(User.student_id == test_student_id)
     )
     user = existing_user.scalar_one_or_none()
-    
+
     if not user:
         # Создаём нового пользователя
         user = User(
@@ -219,11 +235,11 @@ async def test_banner_file(test_session: AsyncSession):
             name="File Test User",
             faculty="Test Faculty",
             password_hash="dummy_hash",  # Не используется в тестах
-            role=UserRole.USER
+            role=UserRole.USER,
         )
         test_session.add(user)
         await test_session.flush()  # Получаем user.id
-    
+
     # 🔹 Шаг 2: Создаём файл с валидным uploaded_by
     file_meta = FileMetadata(
         id=9999,
@@ -236,13 +252,13 @@ async def test_banner_file(test_session: AsyncSession):
         size_bytes=1024,
         uploaded_by=test_student_id,  # ← Используем реального пользователя!
     )
-    
+
     test_session.add(file_meta)
     await test_session.commit()
     await test_session.refresh(file_meta)
-    
+
     yield file_meta
-    
+
     # 🔹 Очищаем после теста
     try:
         await test_session.delete(file_meta)
