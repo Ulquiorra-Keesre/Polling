@@ -253,7 +253,7 @@ class RefreshTokenRepository(DatabaseManager):
             select(RefreshToken).where(
                 and_(
                     RefreshToken.student_id == student_id,
-                    RefreshToken.is_revoked == False,
+                    not RefreshToken.is_revoked,
                     RefreshToken.expires_at > datetime.utcnow(),
                 )
             )
@@ -300,7 +300,7 @@ class RefreshTokenRepository(DatabaseManager):
             select(RefreshToken).where(
                 and_(
                     RefreshToken.student_id == student_id,
-                    RefreshToken.is_revoked == False,
+                    not RefreshToken.is_revoked,
                 )
             )
         )
@@ -328,7 +328,7 @@ class RefreshTokenRepository(DatabaseManager):
             select(RefreshToken).where(
                 and_(
                     RefreshToken.expires_at < datetime.utcnow(),
-                    RefreshToken.is_revoked == True,
+                    RefreshToken.is_revoked,
                 )
             )
         )

@@ -98,7 +98,7 @@ async def client(test_session) -> AsyncGenerator[AsyncClient, None]:
         transport=ASGITransport(app=app),
         base_url="http://test",
         timeout=30.0,
-        follow_redirects=True,  # 🔹 🔥 ДОБАВЛЕНО: для обработки 307 редиректов! 🔥
+        follow_redirects=True,  # 🔹 Для обработки 307 редиректов
     ) as ac:
         yield ac
 
@@ -200,14 +200,8 @@ def test_poll_data():
 
 
 # =============================================================================
-# 🔹 🔥 НОВАЯ ФИКСТУРА: Тестовый файл для баннеров (ДОБАВЬТЕ ЭТО В КОНЕЦ ФАЙЛА) 🔥
+# 🔹 ТЕСТОВЫЙ ФАЙЛ ДЛЯ БАННЕРОВ
 # =============================================================================
-
-# tests/conftest.py - замените фикстуру test_banner_file на эту:
-
-# tests/conftest.py - замените фикстуру test_banner_file на эту:
-
-
 @pytest_asyncio.fixture(scope="function")
 async def test_banner_file(test_session: AsyncSession):
     """
@@ -215,11 +209,10 @@ async def test_banner_file(test_session: AsyncSession):
     Сначала создаёт тестового пользователя, чтобы избежать FK-ошибки.
     """
     from src.models.file import FileMetadata
-    from src.models.user import User, UserRole  # ← Импортируйте User!
+    from src.models.user import User, UserRole
     from sqlalchemy import select
 
     # 🔹 Шаг 1: Создаём тестового пользователя (если нужно)
-    # Используем уникальный student_id, чтобы не конфликтовать с другими тестами
     test_student_id = "FILE_TEST_USER_9999"
 
     # Проверяем, существует ли уже пользователь
@@ -259,10 +252,12 @@ async def test_banner_file(test_session: AsyncSession):
 
     yield file_meta
 
-    # 🔹 Очищаем после теста
+    # 🔹 Очищаем после теста — ИСПРАВЛЕНИЕ: except Exception вместо bare except
     try:
         await test_session.delete(file_meta)
         # Не удаляем пользователя — он может использоваться другими тестами
         await test_session.commit()
-    except:
-        pass
+    except Exception as e:  # ✅ E722 fix: указываем тип исключения
+        # Логируем, но не ломаем тест (ошибка очистки — не критична)
+        print(f"Warning: cleanup failed for test_banner_file: {e}")
+        await test_session.rollback()

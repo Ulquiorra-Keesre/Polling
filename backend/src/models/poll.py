@@ -1,11 +1,13 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+
 from src.database.connection import Base
-from typing import Optional
+from typing import Optional, List
 
 
 class Poll(Base):
+    """Модель опроса"""
     __tablename__ = "polls"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -15,70 +17,46 @@ class Poll(Base):
     total_votes = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # 🔹 Баннер (опционально)
     banner_file_id = Column(Integer, ForeignKey("files.id"), nullable=True)
-    banner = relationship("FileMetadata", foreign_keys=[banner_file_id], lazy="select")
+    banner = relationship(
+        "FileMetadata",
+        foreign_keys=[banner_file_id],
+        lazy="select",
+        back_populates="polls_as_banner"
+    )
 
+    # 🔹 Мягкое удаление
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
-    options = relationship(
-        "Option", back_populates="poll", cascade="all, delete-orphan"
+    # 🔹 Связи
+    options: List["Option"] = relationship(
+        "Option",
+        back_populates="poll",
+        cascade="all, delete-orphan",
+        lazy="select"
     )
-    votes = relationship("Vote", back_populates="poll")
+    votes: List["Vote"] = relationship(
+        "Vote",
+        back_populates="poll",
+        lazy="select"
+    )
 
 
 class Option(Base):
+    """Модель варианта ответа"""
     __tablename__ = "options"
 
     id = Column(Integer, primary_key=True, index=True)
-    poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"))
+    poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False)
     text = Column(String, nullable=False)
     votes = Column(Integer, default=0)
 
-    poll = relationship("Poll", back_populates="options")
-    votes_entries = relationship("Vote", back_populates="option")
-
-
-from pydantic import BaseModel, ConfigDict
-from typing import List
-from datetime import datetime
-
-
-class OptionBase(BaseModel):
-    text: str
-
-
-class OptionCreate(OptionBase):
-    pass
-
-
-class OptionResponse(OptionBase):
-    id: int
-    poll_id: int
-    votes: int = 0
-    percentage: Optional[float] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PollBase(BaseModel):
-    title: str
-    description: str
-    end_date: datetime
-
-
-class PollCreate(PollBase):
-    options: List[OptionCreate]
-
-
-class PollResponse(PollBase):
-    id: int
-    total_votes: int = 0
-    options: List[OptionResponse] = []
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PollResults(PollResponse):
-    pass
+    # 🔹 Связи
+    poll: "Poll" = relationship("Poll", back_populates="options")
+    votes_entries: List["Vote"] = relationship(
+        "Vote",
+        back_populates="option",
+        lazy="select"
+    )

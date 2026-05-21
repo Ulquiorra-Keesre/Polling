@@ -69,7 +69,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
     errors = []
     for error in exc.errors():
-        loc = " → ".join(str(l) for l in error["loc"] if l != "body")
+        loc = " → ".join(str(part) for part in error["loc"] if part != "body")
         errors.append(
             {"field": loc or "body", "message": error["msg"], "type": error["type"]}
         )
