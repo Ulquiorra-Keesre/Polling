@@ -5,12 +5,14 @@ from sqlalchemy.orm import relationship
 from src.database.connection import Base
 from typing import List
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from src.models.vote import Vote
 
 
 class Poll(Base):
     """Модель опроса"""
+
     __tablename__ = "polls"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -26,7 +28,7 @@ class Poll(Base):
         "FileMetadata",
         foreign_keys=[banner_file_id],
         lazy="select",
-        back_populates="polls_as_banner"
+        back_populates="polls_as_banner",
     )
 
     # 🔹 Мягкое удаление
@@ -35,31 +37,25 @@ class Poll(Base):
 
     # 🔹 Связи
     options: List["Option"] = relationship(
-        "Option",
-        back_populates="poll",
-        cascade="all, delete-orphan",
-        lazy="select"
+        "Option", back_populates="poll", cascade="all, delete-orphan", lazy="select"
     )
-    votes: List["Vote"] = relationship(
-        "Vote",
-        back_populates="poll",
-        lazy="select"
-    )
+    votes: List["Vote"] = relationship("Vote", back_populates="poll", lazy="select")
 
 
 class Option(Base):
     """Модель варианта ответа"""
+
     __tablename__ = "options"
 
     id = Column(Integer, primary_key=True, index=True)
-    poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False)
+    poll_id = Column(
+        Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False
+    )
     text = Column(String, nullable=False)
     votes = Column(Integer, default=0)
 
     # 🔹 Связи
     poll: "Poll" = relationship("Poll", back_populates="options")
     votes_entries: List["Vote"] = relationship(
-        "Vote",
-        back_populates="option",
-        lazy="select"
+        "Vote", back_populates="option", lazy="select"
     )

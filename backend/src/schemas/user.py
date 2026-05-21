@@ -5,11 +5,14 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 
-from src.models.user import UserRole  # ← Импорт Enum из models (без циклических проблем)
+from src.models.user import (
+    UserRole,
+)  # ← Импорт Enum из models (без циклических проблем)
 
 
 class UserRegister(BaseModel):
     """Схема регистрации пользователя"""
+
     student_id: str = Field(..., min_length=3, max_length=20, description="ID студента")
     password: str = Field(..., min_length=6, max_length=100, description="Пароль")
     name: str = Field(..., min_length=2, max_length=100, description="Имя пользователя")
@@ -19,12 +22,14 @@ class UserRegister(BaseModel):
 
 class UserLogin(BaseModel):
     """Схема входа"""
+
     student_id: str = Field(..., min_length=3, max_length=20)
     password: str = Field(..., min_length=6, max_length=100)
 
 
 class UserResponse(BaseModel):
     """Схема ответа с данными пользователя"""
+
     id: int
     student_id: str
     name: str
@@ -32,11 +37,14 @@ class UserResponse(BaseModel):
     role: UserRole  # ← Строгая типизация через Enum
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True, use_enum_values=True)  # ✅ Pydantic v2 style
+    model_config = ConfigDict(
+        from_attributes=True, use_enum_values=True
+    )  # ✅ Pydantic v2 style
 
 
 class Token(BaseModel):
     """Схема токена доступа"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"

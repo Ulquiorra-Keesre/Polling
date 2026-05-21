@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 class UserRole(enum.Enum):
     """Роли пользователей"""
+
     GUEST = "guest"
     USER = "user"
     ADMIN = "admin"
@@ -25,6 +26,7 @@ class UserRole(enum.Enum):
 
 class User(Base):
     """Модель пользователя"""
+
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -37,20 +39,17 @@ class User(Base):
 
     # 🔹 Связи (используем строки + TYPE_CHECKING для избежания циклических импортов)
     votes: List["Vote"] = relationship(
-        "Vote",
-        back_populates="user",
-        cascade="all, delete-orphan",
-        lazy="select"
+        "Vote", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
     refresh_tokens: List["RefreshToken"] = relationship(
         "RefreshToken",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="select"
+        lazy="select",
     )
     uploaded_files: List["FileMetadata"] = relationship(
         "FileMetadata",
         back_populates="uploader",
         cascade="all, delete-orphan",
-        lazy="select"
+        lazy="select",
     )

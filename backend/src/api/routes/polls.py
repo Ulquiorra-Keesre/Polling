@@ -320,9 +320,7 @@ async def update_poll(
 ):
     """Обновление опроса (только админ)"""
 
-    poll = await db.execute(
-        select(Poll).where(Poll.id == poll_id, not Poll.is_deleted)
-    )
+    poll = await db.execute(select(Poll).where(Poll.id == poll_id, not Poll.is_deleted))
     poll = poll.scalar_one_or_none()
 
     if not poll:
