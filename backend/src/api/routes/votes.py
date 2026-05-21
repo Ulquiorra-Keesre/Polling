@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from src.models.vote import Vote, VoteCreate
+from src.models.vote import Vote
+from src.schemas.vote import VoteCreate
 from src.models.poll import Poll, Option
 from src.queries.votes import has_user_voted
 from src.api.dependencies import DatabaseDep, CurrentUser

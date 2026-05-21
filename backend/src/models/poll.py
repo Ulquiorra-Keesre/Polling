@@ -3,7 +3,10 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
 from src.database.connection import Base
-from typing import Optional, List
+from typing import List
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.models.vote import Vote
 
 
 class Poll(Base):
