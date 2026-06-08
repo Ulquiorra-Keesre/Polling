@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from src.queries.orm import Repository
-from src.models.poll import Poll, PollCreate
-
+from src.models.poll import Poll
+from src.schemas.poll import PollCreate
 
 async def get_all_polls(db: AsyncSession) -> List[Poll]:
     """Получить все опросы"""

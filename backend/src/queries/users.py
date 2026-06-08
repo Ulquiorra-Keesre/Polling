@@ -1,7 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.queries.orm import Repository
-from src.models.user import User, UserCreate, UserResponse, UserRole
+from src.models.user import User, UserRole
+from src.schemas.user import UserCreate, UserResponse
 
 
 async def create_user(
