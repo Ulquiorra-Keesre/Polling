@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 
 from src.queries.orm import Repository
 from src.models.user import User, UserRole
@@ -22,7 +23,7 @@ async def create_user(
 
 async def get_user_by_student_id(
     db: AsyncSession, student_id: str
-) -> UserResponse | None:
+) -> Optional[UserResponse]:
     repo = Repository(db)
     user = await repo.users.get_by_student_id(student_id)
     return UserResponse.model_validate(user) if user else None
@@ -51,7 +52,7 @@ async def is_admin(db: AsyncSession, student_id: str) -> bool:
     return user.role == UserRole.ADMIN if user else False
 
 
-async def get_all_users(db: AsyncSession):
+async def get_all_users(db: AsyncSession) -> List[UserResponse]:
     repo = Repository(db)
     users = await repo.users.get_all(User)
     return [UserResponse.model_validate(user) for user in users]
@@ -59,24 +60,13 @@ async def get_all_users(db: AsyncSession):
 
 async def update_user_role(
     db: AsyncSession, student_id: str, new_role: UserRole
-) -> UserResponse | None:
+) -> Optional[UserResponse]:
     repo = Repository(db)
     updated_user = await repo.users.update_user_role(student_id, new_role)
     return UserResponse.model_validate(updated_user) if updated_user else None
 
 
-async def get_users_by_role(db: AsyncSession, role: UserRole) -> list:
+async def get_users_by_role(db: AsyncSession, role: UserRole) -> List[UserResponse]:
     repo = Repository(db)
     users = await repo.users.get_many_by_field(User, "role", role)
     return [UserResponse.model_validate(user) for user in users]
-
-
-# async def update_user_admin_status(db: AsyncSession, student_id: str, is_admin: bool) -> UserResponse | None:
-#     """Обновить статус администратора"""
-#     repo = Repository(db)
-
-#     user = await repo.users.get_by_student_id(student_id)
-#     if user:
-#         updated_user = await repo.users.update(user.id, is_admin=is_admin)
-#         return UserResponse.model_validate(updated_user)
-#     return None

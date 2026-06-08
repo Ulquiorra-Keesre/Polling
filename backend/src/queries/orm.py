@@ -1,7 +1,7 @@
 from sqlalchemy import select, and_, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, cast, TYPE_CHECKING
 from datetime import datetime
 
 from .core import DatabaseManager
@@ -9,6 +9,9 @@ from ..models.user import User, UserRole
 from ..models.poll import Poll, Option
 from ..models.vote import Vote
 from ..models.token import RefreshToken
+
+if TYPE_CHECKING:
+    from ..models.file import FileMetadata
 
 
 class UserRepository(DatabaseManager):
@@ -26,7 +29,7 @@ class UserRepository(DatabaseManager):
         result = await self.session.execute(
             select(User).where(User.role == UserRole.ADMIN)
         )
-        return result.scalars().all()
+        return cast(List[User], result.scalars().all())
 
     async def create_user(
         self, student_id: str, name: str, faculty: str, role: UserRole = UserRole.USER
@@ -64,28 +67,28 @@ class PollRepository(DatabaseManager):
         result = await self.session.execute(
             select(Poll).options(selectinload(Poll.options))
         )
-        return result.scalars().all()
+        return cast(List[Poll], result.scalars().all())
 
     async def get_by_id_with_details(self, poll_id: int) -> Optional[Poll]:
         """Получить опрос по ID с детальной информацией"""
         result = await self.session.execute(
-            select(Poll).options(selectinload(Poll.options)).where(Poll.id == poll_id)
+            select(Poll)
+            .options(selectinload(Poll.options))
+            .where(Poll.id == poll_id)
         )
         return result.scalar_one_or_none()
 
     async def get_active_polls(self) -> List[Poll]:
         """Получить активные опросы (у которых end_date еще не наступил)"""
-        from datetime import datetime
-
         result = await self.session.execute(
             select(Poll)
             .options(selectinload(Poll.options))
-            .where(Poll.end_date > datetime.now())
+            .where(Poll.end_date > datetime.now(timezone.utc))
         )
-        return result.scalars().all()
+        return cast(List[Poll], result.scalars().all())
 
     async def create_poll_with_options(
-        self, title: str, description: str, end_date: str, options: List[str]
+        self, title: str, description: str, end_date: datetime, options: List[str]
     ) -> Poll:
         """Создать опрос с вариантами ответов"""
         try:
@@ -129,9 +132,9 @@ class OptionRepository(DatabaseManager):
         result = await self.session.execute(
             select(Option).where(Option.poll_id == poll_id)
         )
-        return result.scalars().all()
+        return cast(List[Option], result.scalars().all())
 
-    async def increment_votes(self, option_id: int) -> Option:
+    async def increment_votes(self, option_id: int) -> Optional[Option]:
         """Увеличить счетчик голосов для варианта ответа"""
         option = await self.get_by_id(Option, option_id)
         if option:
@@ -155,7 +158,7 @@ class VoteRepository(DatabaseManager):
                 and_(Vote.poll_id == poll_id, Vote.student_id == student_id)
             )
         )
-        return result.scalars().all()
+        return cast(List[Vote], result.scalars().all())
 
     async def has_user_voted_in_poll(self, poll_id: int, student_id: str) -> bool:
         """Проверить, голосовал ли пользователь в этом опросе"""
@@ -195,7 +198,7 @@ class VoteRepository(DatabaseManager):
             await self.session.rollback()
             raise
 
-    async def get_poll_results(self, poll_id: int) -> Dict[str, Any]:
+    async def get_poll_results(self, poll_id: int) -> Optional[Dict[str, Any]]:
         """Получить результаты голосования для опроса"""
         poll_repo = PollRepository(self.session)
         poll = await poll_repo.get_by_id_with_details(poll_id)
@@ -244,28 +247,24 @@ class RefreshTokenRepository(DatabaseManager):
         return result.scalar_one_or_none()
 
     async def get_active_by_student_id(self, student_id: str) -> List[RefreshToken]:
-        """
-        Получить активные (неотозванные и неистёкшие) токены пользователя
-        """
-        from datetime import datetime
-
+        """Получить активные (неотозванные и неистёкшие) токены пользователя"""
         result = await self.session.execute(
             select(RefreshToken).where(
                 and_(
                     RefreshToken.student_id == student_id,
-                    not RefreshToken.is_revoked,
-                    RefreshToken.expires_at > datetime.utcnow(),
+                    ~RefreshToken.is_revoked,
+                    RefreshToken.expires_at > datetime.now(timezone.utc),
                 )
             )
         )
-        return result.scalars().all()
+        return cast(List[RefreshToken], result.scalars().all())
 
     async def create_token(
         self,
         student_id: str,
         token_hash: str,
         expires_at: datetime,
-        user_agent: str = None,
+        user_agent: Optional[str] = None,
     ) -> RefreshToken:
         """Создать новую запись refresh токена"""
         return await self.create(
@@ -277,30 +276,22 @@ class RefreshTokenRepository(DatabaseManager):
         )
 
     async def revoke_by_hash(self, token_hash: str) -> bool:
-        """
-        Отозвать токен по хэшу
-        Возвращает: был ли токен найден и отозван
-        """
+        """Отозвать токен по хэшу"""
         token = await self.get_by_hash(token_hash)
         if token and not token.is_revoked:
             token.is_revoked = True
-            token.last_used_at = datetime.utcnow()
+            token.last_used_at = datetime.now(timezone.utc)
             await self.session.commit()
             return True
         return False
 
     async def revoke_all_for_user(self, student_id: str) -> int:
-        """
-        Отозвать все активные токены пользователя
-        Возвращает: количество отозванных токенов
-        """
-        from datetime import datetime
-
+        """Отозвать все активные токены пользователя"""
         result = await self.session.execute(
             select(RefreshToken).where(
                 and_(
                     RefreshToken.student_id == student_id,
-                    not RefreshToken.is_revoked,
+                    ~RefreshToken.is_revoked,
                 )
             )
         )
@@ -309,7 +300,7 @@ class RefreshTokenRepository(DatabaseManager):
         revoked_count = 0
         for token in tokens:
             token.is_revoked = True
-            token.last_used_at = datetime.utcnow()
+            token.last_used_at = datetime.now(timezone.utc)
             revoked_count += 1
 
         if revoked_count > 0:
@@ -318,16 +309,11 @@ class RefreshTokenRepository(DatabaseManager):
         return revoked_count
 
     async def cleanup_expired(self) -> int:
-        """
-        Удалить истёкшие токены из БД (для очистки)
-        Возвращает: количество удалённых записей
-        """
-        from datetime import datetime
-
+        """Удалить истёкшие токены из БД"""
         result = await self.session.execute(
             select(RefreshToken).where(
                 and_(
-                    RefreshToken.expires_at < datetime.utcnow(),
+                    RefreshToken.expires_at < datetime.now(timezone.utc),
                     RefreshToken.is_revoked,
                 )
             )
