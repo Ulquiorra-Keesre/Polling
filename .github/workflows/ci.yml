@@ -216,6 +216,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: ""
           cache-to: ""
+          provenance: false
 
       - name: Output image digest
         run: |
