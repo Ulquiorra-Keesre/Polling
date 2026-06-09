@@ -1,7 +1,10 @@
 from sqlalchemy import Column, Integer, String, DateTime, BigInteger, ForeignKey
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 from src.database.connection import Base
+from src.models.user import User
+from src.models.poll import Poll
+from typing import Optional
 
 
 class FileMetadata(Base):
@@ -23,4 +26,11 @@ class FileMetadata(Base):
     uploaded_by = Column(String, ForeignKey("users.student_id"), nullable=False)
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    uploader = relationship("User", back_populates="uploaded_files")
+    uploader: Mapped["User"] = relationship("User", back_populates="uploaded_files")
+
+    polls_as_banner: Mapped[Optional[list["Poll"]]] = relationship(
+        "Poll",
+        foreign_keys="Poll.banner_file_id",
+        back_populates="banner",
+        lazy="select",
+    )
