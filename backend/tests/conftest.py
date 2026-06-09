@@ -212,4 +212,4 @@ async def test_banner_file(test_session: AsyncSession):
         await test_session.commit()
     except Exception as e:
         print(f"Warning: cleanup failed for test_banner_file: {e}")
-        await test_session.rollback()  #Try
+        await test_session.rollback()
