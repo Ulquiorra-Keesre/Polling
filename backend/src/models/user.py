@@ -29,7 +29,7 @@ class User(Base):
     student_id = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     faculty = Column(String, nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False) # type: ignore[var-annotated]
+    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)  # type: ignore[var-annotated]
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -40,7 +40,7 @@ class UserRepository(DatabaseManager):
             User, student_id=student_id, name=name, faculty=faculty, role=user_role
         )
 
-    async def update(self, user_id: int, **data) -> Optional[User]: # type: ignore[override]
+    async def update(self, user_id: int, **data) -> Optional[User]:  # type: ignore[override]
         return await super().update(User, user_id, **data)
 
     async def update_user_role(
