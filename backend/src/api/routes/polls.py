@@ -1,9 +1,9 @@
-# src/api/routes/polls.py
-"""Маршруты для работы с опросами"""
+# mypy: disable-error-code="misc"
+# mypy: disable-error-code="list-item"
 
 from fastapi import APIRouter, HTTPException, status, Depends, Response
 from sqlalchemy import select, func, or_, desc, asc
-from datetime import datetime, timezone  # ← timezone импортирован!
+from datetime import datetime, timezone
 
 from src.services.file_service import FileService
 from src.exceptions import ResourceGoneException
@@ -100,7 +100,7 @@ async def get_polls(
                     created_at=poll.created_at,
                     banner_file_id=poll.banner_file_id,
                     banner_url=banner_url,
-                    options=[  # type: ignore[misc]
+                    options=[
                         {"id": opt.id, "text": str(opt.text), "votes": opt.votes}
                         for opt in options
                     ],
@@ -174,7 +174,7 @@ async def create_new_poll(
             end_date=poll.end_date,
             total_votes=poll.total_votes,
             created_at=poll.created_at,
-            options=[  # type: ignore[misc]
+            options=[
                 {"id": opt.id, "text": opt.text, "votes": opt.votes}
                 for opt in options_list
             ],
@@ -227,7 +227,7 @@ async def get_poll(poll_id: int, db: DatabaseDep, current_user: CurrentUser):
             created_at=poll.created_at,
             banner_file_id=poll.banner_file_id,
             banner_url=banner_url,
-            options=[  # type: ignore[misc]
+            options=[
                 {"id": opt.id, "text": opt.text, "votes": opt.votes} for opt in options
             ],
         )
@@ -365,7 +365,7 @@ async def get_active_polls(db: DatabaseDep):
                 "end_date": poll.end_date.isoformat(),
                 "total_votes": poll.total_votes,
                 "created_at": poll.created_at.isoformat(),
-                "options": [  # type: ignore[misc]
+                "options": [
                     {"id": opt.id, "text": opt.text, "votes": opt.votes}
                     for opt in options
                 ],
