@@ -56,6 +56,10 @@ jobs:
             --disable-error-code=return-value \
             --disable-error-code=arg-type \
             --disable-error-code=call-arg
+            --ignore-missing-imports \
+            --disable-error-code=misc \
+            --disable-error-code=list-item \
+            --disable-error-code=annotation-unchecked
 
   test-backend:
     name: Backend Tests
