@@ -100,10 +100,10 @@ async def get_polls(
                     created_at=poll.created_at,
                     banner_file_id=poll.banner_file_id,
                     banner_url=banner_url,
-                    options=[
+                    options=[  # type: ignore[misc]
                         {"id": opt.id, "text": str(opt.text), "votes": opt.votes}
                         for opt in options
-                    ],  # type: ignore[misc]
+                    ],
                 )
             )
 
@@ -174,10 +174,10 @@ async def create_new_poll(
             end_date=poll.end_date,
             total_votes=poll.total_votes,
             created_at=poll.created_at,
-            options=[
+            options=[  # type: ignore[misc]
                 {"id": opt.id, "text": opt.text, "votes": opt.votes}
                 for opt in options_list
-            ],  # type: ignore[misc]
+            ],
         )
 
     except HTTPException:
@@ -227,9 +227,9 @@ async def get_poll(poll_id: int, db: DatabaseDep, current_user: CurrentUser):
             created_at=poll.created_at,
             banner_file_id=poll.banner_file_id,
             banner_url=banner_url,
-            options=[
+            options=[  # type: ignore[misc]
                 {"id": opt.id, "text": opt.text, "votes": opt.votes} for opt in options
-            ],  # type: ignore[misc]
+            ],
         )
 
     except (HTTPException, ResourceGoneException):
@@ -365,10 +365,10 @@ async def get_active_polls(db: DatabaseDep):
                 "end_date": poll.end_date.isoformat(),
                 "total_votes": poll.total_votes,
                 "created_at": poll.created_at.isoformat(),
-                "options": [
+                "options": [  # type: ignore[misc]
                     {"id": opt.id, "text": opt.text, "votes": opt.votes}
                     for opt in options
-                ],  # type: ignore[misc]
+                ],
                 "is_active": True,
             }
             active_polls.append(poll_dict)
