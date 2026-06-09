@@ -1,6 +1,3 @@
-# src/models/user.py
-"""SQLAlchemy модели для пользователей"""
-
 from typing import TYPE_CHECKING, List
 from sqlalchemy import Column, Integer, String, DateTime, Enum
 from sqlalchemy.sql import func
@@ -9,7 +6,6 @@ from sqlalchemy.orm import relationship
 from src.database.connection import Base
 import enum
 
-# 🔹 Для типизации циклических импортов (mypy/ruff)
 if TYPE_CHECKING:
     from src.models.vote import Vote
     from src.models.token import RefreshToken
@@ -33,11 +29,10 @@ class User(Base):
     student_id = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     faculty = Column(String, nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False) # type: ignore[var-annotated]
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # 🔹 Связи (используем строки + TYPE_CHECKING для избежания циклических импортов)
     votes: List["Vote"] = relationship(
         "Vote", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )

@@ -103,7 +103,7 @@ async def get_polls(
                     options=[
                         {"id": opt.id, "text": str(opt.text), "votes": opt.votes}
                         for opt in options
-                    ],
+                    ], # type: ignore[misc]
                 )
             )
 
@@ -177,7 +177,7 @@ async def create_new_poll(
             options=[
                 {"id": opt.id, "text": opt.text, "votes": opt.votes}
                 for opt in options_list
-            ],
+            ], # type: ignore[misc]
         )
 
     except HTTPException:
@@ -229,7 +229,7 @@ async def get_poll(poll_id: int, db: DatabaseDep, current_user: CurrentUser):
             banner_url=banner_url,
             options=[
                 {"id": opt.id, "text": opt.text, "votes": opt.votes} for opt in options
-            ],
+            ], # type: ignore[misc]
         )
 
     except (HTTPException, ResourceGoneException):
@@ -368,7 +368,7 @@ async def get_active_polls(db: DatabaseDep):
                 "options": [
                     {"id": opt.id, "text": opt.text, "votes": opt.votes}
                     for opt in options
-                ],
+                ], # type: ignore[misc]
                 "is_active": True,
             }
             active_polls.append(poll_dict)
