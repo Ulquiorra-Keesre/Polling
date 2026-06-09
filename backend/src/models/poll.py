@@ -3,7 +3,6 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, Mapped
 
 from src.database.connection import Base
-from typing import List
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -37,7 +36,9 @@ class Poll(Base):
     options: Mapped[list["Option"]] = relationship(
         "Option", back_populates="poll", cascade="all, delete-orphan", lazy="select"
     )
-    votes: Mapped[list["Vote"]] = relationship("Vote", back_populates="poll", lazy="select")
+    votes: Mapped[list["Vote"]] = relationship(
+        "Vote", back_populates="poll", lazy="select"
+    )
 
 
 class Option(Base):
