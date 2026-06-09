@@ -1,5 +1,3 @@
-// src/components/__tests__/Login.test.tsx
-
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { rest } from 'msw';
@@ -14,13 +12,11 @@ describe('Login Component', () => {
       </MemoryRouter>
     );
     
-    // ✅ Используйте placeholder или role вместо labelText:
     expect(screen.getByPlaceholderText(/например: 777/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/введите пароль/i)).toBeInTheDocument();
   });
 
   it('shows error on invalid credentials', async () => {
-    // ✅ Мокируем ошибку логина
     server.use(
       rest.post('/api/auth/login', (req, res, ctx) => {
         return res(
@@ -44,7 +40,6 @@ describe('Login Component', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /войти/i }));
     
-    // ✅ Ожидаем текст ошибки от бэкенда:
     await waitFor(() => {
       expect(screen.getByText(/неверные учётные данные|ошибка|сервер недоступен/i)).toBeInTheDocument();
     });
@@ -53,7 +48,6 @@ describe('Login Component', () => {
   it('submits valid form', async () => {
     const mockLogin = jest.fn().mockResolvedValue({ success: true });
     
-    // ✅ Мокируем успешный логин
     server.use(
       rest.post('/api/auth/login', (req, res, ctx) => {
         return res(

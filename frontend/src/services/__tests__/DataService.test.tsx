@@ -1,12 +1,9 @@
-// src/services/__tests__/DataService.test.tsx
-
 import { DataService } from '../DataService';
 import { rest } from 'msw';
 import { server } from '../../../tests/mocks/server';
 
 describe('DataService', () => {
   beforeEach(() => {
-    // ✅ Мокируем localStorage перед каждым тестом
     (window.localStorage as any).store = {
       access_token: 'mock_token',
       MSW_COOKIE_STORE: JSON.stringify({})
@@ -115,7 +112,6 @@ describe('getPolls', () => {
 
   describe('vote', () => {
     beforeEach(() => {
-      // ✅ Мокируем getCurrentUser для vote()
       (DataService as any).getCurrentUser = jest.fn(() => ({ student_id: 'TEST_USER' }));
     });
 

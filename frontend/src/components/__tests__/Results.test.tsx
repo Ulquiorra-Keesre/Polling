@@ -1,5 +1,3 @@
-// src/components/__tests__/Results.test.tsx
-
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { rest } from 'msw';
@@ -9,7 +7,7 @@ import Results from '../Results';
 describe('Results Component', () => {
   const mockResults = {
     poll_id: 1,
-    title: 'Test Poll 1',  // ✅ Совпадает с моком в handlers.ts!
+    title: 'Test Poll 1',
     description: 'Test',
     total_votes: 10,
     end_date: '2027-12-31T23:59:59Z',
@@ -22,7 +20,6 @@ describe('Results Component', () => {
   };
 
   it('renders error state when pollId is missing', () => {
-    // ✅ Тестируем конкретный текст, а не регекс с несколькими совпадениями:
     render(
       <MemoryRouter initialEntries={['/results/']}>
         <Routes>
@@ -31,12 +28,10 @@ describe('Results Component', () => {
       </MemoryRouter>
     );
     
-    // ✅ Проверяем один конкретный элемент:
     expect(screen.getByText('Результаты не найдены')).toBeInTheDocument();
   });
 
   it('renders results after successful fetch', async () => {
-    // ✅ Моки уже настроен в handlers.ts, просто рендерим:
     render(
       <MemoryRouter initialEntries={['/results/1']}>
         <Routes>
@@ -46,10 +41,8 @@ describe('Results Component', () => {
     );
     
     await waitFor(() => {
-      // ✅ Проверяем, что загрузка закончилась:
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument();
       
-      // ✅ Используем точный заголовок из мока:
       expect(screen.getByText('Test Poll 1')).toBeInTheDocument();
       expect(screen.getByText('60.0%')).toBeInTheDocument();
     });
@@ -65,14 +58,12 @@ describe('Results Component', () => {
     );
     
     await waitFor(() => {
-      // ✅ Проверяем бейдж лидера:
       expect(screen.getByText('Лидер')).toBeInTheDocument();
       expect(screen.getByText('60.0%')).toBeInTheDocument();
     });
   });
 
   it('handles API error gracefully', async () => {
-    // ✅ Временный хендлер для ошибки (переопределяет глобальный):
     server.use(
       rest.get('http://localhost:8000/api/polls/:pollId/results', (req, res, ctx) => {
         return res(
