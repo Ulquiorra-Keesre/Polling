@@ -39,7 +39,9 @@ class AuthService:
         """Регистрация нового пользователя с правильной ролью"""
         user = await self.repo.users.get_by_student_id(user_data.student_id)
         if user:
-            raise ValueError("Пользователь с таким номером студенческого уже существует")
+            raise ValueError(
+                "Пользователь с таким номером студенческого уже существует"
+            )
 
         hashed_password = self.hash_password(user_data.password)
 
@@ -80,10 +82,12 @@ class AuthService:
             return None
         return user
 
-    async def create_token_pair(self, user: User, user_agent: Optional[str] = None) -> dict:
+    async def create_token_pair(
+        self, user: User, user_agent: Optional[str] = None
+    ) -> dict:
         """Создать пару access/refresh токенов"""
         role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
-        
+
         access_token = create_access_token(
             data={"sub": user.student_id}, role=role_value
         )
@@ -112,7 +116,9 @@ class AuthService:
             },
         }
 
-    async def refresh_access_token(self, refresh_token: str, user_agent: Optional[str] = None) -> Optional[dict]:
+    async def refresh_access_token(
+        self, refresh_token: str, user_agent: Optional[str] = None
+    ) -> Optional[dict]:
         """Обновление access токена по refresh токену с ротацией"""
         payload = verify_token(refresh_token, expected_type="refresh")
         if not payload:
@@ -173,7 +179,9 @@ class AuthService:
         return await self.repo.refresh_tokens.cleanup_expired()
 
     def check_user_role(self, user: User, allowed_roles: List[UserRole]) -> bool:
-        user_role = user.role if isinstance(user.role, UserRole) else UserRole(user.role)
+        user_role = (
+            user.role if isinstance(user.role, UserRole) else UserRole(user.role)
+        )
         return user_role in allowed_roles
 
     async def check_user_permissions(
@@ -184,7 +192,9 @@ class AuthService:
             return False
 
         role_hierarchy = {UserRole.GUEST: 0, UserRole.USER: 1, UserRole.ADMIN: 2}
-        user_role = user.role if isinstance(user.role, UserRole) else UserRole(user.role)
+        user_role = (
+            user.role if isinstance(user.role, UserRole) else UserRole(user.role)
+        )
         user_level = role_hierarchy.get(user_role, 0)
         required_level = role_hierarchy.get(required_role, 0)
 

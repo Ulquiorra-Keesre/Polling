@@ -5,6 +5,7 @@ from src.queries.orm import Repository
 from src.models.poll import Poll
 from src.schemas.poll import PollCreate
 
+
 async def get_all_polls(db: AsyncSession) -> List[Poll]:
     """Получить все опросы"""
     repo = Repository(db)

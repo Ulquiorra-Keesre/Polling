@@ -26,7 +26,7 @@ router = APIRouter()
 
 def _base_poll_query():
     """Базовый запрос, исключающий мягко удалённые опросы"""
-    return select(Poll).where(Poll.is_deleted == False)
+    return select(Poll).where(~Poll.is_deleted)
 
 
 @router.get("/")
@@ -140,7 +140,7 @@ async def create_new_poll(
             raise HTTPException(400, "Дата окончания должна быть в будущем")
 
         exists = await db.execute(
-            select(Poll).where(Poll.title == poll_data.title, Poll.is_deleted == False)
+            select(Poll).where(Poll.title == poll_data.title, ~Poll.is_deleted)
         )
         if exists.scalar_one_or_none():
             raise HTTPException(409, "Опрос с таким названием уже существует")
@@ -193,7 +193,7 @@ async def get_poll(poll_id: int, db: DatabaseDep, current_user: CurrentUser):
     """Получить опрос по ID"""
     try:
         result = await db.execute(
-            select(Poll).where(Poll.id == poll_id, Poll.is_deleted == False)
+            select(Poll).where(Poll.id == poll_id, ~Poll.is_deleted)
         )
         poll = result.scalar_one_or_none()
 
@@ -247,7 +247,7 @@ async def get_poll_results(poll_id: int, db: DatabaseDep, current_user: CurrentU
     """Получить результаты голосования по опросу"""
     try:
         poll_result = await db.execute(
-            select(Poll).where(Poll.id == poll_id, Poll.is_deleted == False)
+            select(Poll).where(Poll.id == poll_id, ~Poll.is_deleted)
         )
         poll = poll_result.scalar_one_or_none()
 
@@ -320,7 +320,7 @@ async def update_poll(
 ):
     """Обновление опроса (только админ)"""
 
-    poll = await db.execute(select(Poll).where(Poll.id == poll_id, Poll.is_deleted == False))
+    poll = await db.execute(select(Poll).where(Poll.id == poll_id, ~Poll.is_deleted))
     poll = poll.scalar_one_or_none()
 
     if not poll:
@@ -346,7 +346,7 @@ async def get_active_polls(db: DatabaseDep):
 
         result = await db.execute(
             select(Poll)
-            .where(Poll.end_date > current_time, Poll.is_deleted == False)
+            .where(Poll.end_date > current_time, ~Poll.is_deleted)
             .order_by(Poll.created_at.desc())
         )
         polls = result.scalars().all()
@@ -433,7 +433,7 @@ async def update_poll_banner(
             raise HTTPException(404, detail=f"Файл {banner_file_id} не найден")
 
         poll = await db.execute(
-            select(Poll).where(Poll.id == poll_id, Poll.is_deleted == False)
+            select(Poll).where(Poll.id == poll_id, ~Poll.is_deleted)
         )
         poll = poll.scalar_one_or_none()
 

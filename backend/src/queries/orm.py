@@ -1,17 +1,14 @@
 from sqlalchemy import select, and_, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from typing import List, Optional, Dict, Any, cast, TYPE_CHECKING
-from datetime import datetime
+from typing import List, Optional, Dict, Any, cast
+from datetime import datetime, timezone
 
 from .core import DatabaseManager
 from ..models.user import User, UserRole
 from ..models.poll import Poll, Option
 from ..models.vote import Vote
 from ..models.token import RefreshToken
-
-if TYPE_CHECKING:
-    from ..models.file import FileMetadata
 
 
 class UserRepository(DatabaseManager):
@@ -72,9 +69,7 @@ class PollRepository(DatabaseManager):
     async def get_by_id_with_details(self, poll_id: int) -> Optional[Poll]:
         """Получить опрос по ID с детальной информацией"""
         result = await self.session.execute(
-            select(Poll)
-            .options(selectinload(Poll.options))
-            .where(Poll.id == poll_id)
+            select(Poll).options(selectinload(Poll.options)).where(Poll.id == poll_id)
         )
         return result.scalar_one_or_none()
 
