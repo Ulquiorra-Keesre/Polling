@@ -116,6 +116,7 @@ jobs:
           REFRESH_SECRET_KEY: test-refresh-key-for-ci-only
           APP_ENV: testing
           LOG_LEVEL: DEBUG
+          OPENWEATHER_API_KEY: test-key-for-mocking
         run: |
           python -m pytest tests/ -v \
             --cov=src \
