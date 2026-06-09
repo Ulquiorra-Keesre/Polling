@@ -110,6 +110,7 @@ jobs:
       - name: Run tests with coverage
         working-directory: ./backend
         env:
+          TEST_DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/poll_system_test
           DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/poll_system_test
           SECRET_KEY: test-secret-key-for-ci-only-do-not-use-in-prod
           REFRESH_SECRET_KEY: test-refresh-key-for-ci-only

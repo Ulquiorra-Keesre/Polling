@@ -1,6 +1,3 @@
-# tests/conftest.py
-"""Фикстуры и конфигурация для интеграционных тестов"""
-
 import os
 import sys
 import asyncio
@@ -15,51 +12,35 @@ from sqlalchemy.pool import NullPool
 from src.main import app
 from src.database.connection import Base, get_db
 
-# =============================================================================
-# 🔹 ИСПРАВЛЕНИЕ ДЛЯ WINDOWS (обязательно в начале файла!)
-# =============================================================================
-# Решает проблемы asyncpg + ProactorEventLoop на Windows
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# =============================================================================
-# 🔹 КОНФИГУРАЦИЯ
-# =============================================================================
-# Если тестовая БД не создана — создайте: createdb -U postgres poll_system_test
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:1878@localhost:5432/poll_system_test",
+    "postgresql+asyncpg://test_user:test_password@localhost:5432/poll_system_test",
 )
 
 
-# =============================================================================
-# 🔹 ТЕСТОВЫЙ ДВИЖОК БД (function scope для изоляции)
-# =============================================================================
 @pytest_asyncio.fixture(scope="function")
 async def test_engine():
     """Создаёт и очищает схему БД для каждого теста"""
     engine = create_async_engine(
         TEST_DATABASE_URL,
-        poolclass=NullPool,  # Без пула для тестов — чище
+        poolclass=NullPool,
         echo=False,
     )
 
-    # Создаём таблицы
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
 
-    # Очищаем после теста (изоляция)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
 
 
-# =============================================================================
-# 🔹 СЕССИЯ С ТРАНЗАКЦИЕЙ (function scope)
-# =============================================================================
 @pytest_asyncio.fixture(scope="function")
 async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
     """Асинхронная сессия с явным управлением транзакцией"""
@@ -71,24 +52,17 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
     )
 
     async with async_session() as session:
-        # 🔹 Явно начинаем транзакцию (НЕ как контекстный менеджер!)
         await session.begin()
         try:
-            # 🔹 Отдаём сессию тесту — транзакция ещё открыта!
             yield session
         finally:
-            # 🔹 Откатываем все изменения после теста (полная изоляция)
             await session.rollback()
 
 
-# =============================================================================
-# 🔹 HTTP КЛИЕНТ (function scope)
-# =============================================================================
 @pytest_asyncio.fixture(scope="function")
 async def client(test_session) -> AsyncGenerator[AsyncClient, None]:
     """Async HTTP client с переопределённой зависимостью get_db"""
 
-    # Переопределяем get_db для использования тестовой сессии
     async def override_get_db():
         yield test_session
 
@@ -98,17 +72,11 @@ async def client(test_session) -> AsyncGenerator[AsyncClient, None]:
         transport=ASGITransport(app=app),
         base_url="http://test",
         timeout=30.0,
-        follow_redirects=True,  # 🔹 Для обработки 307 редиректов
+        follow_redirects=True,
     ) as ac:
         yield ac
 
-    # Очищаем переопределения после теста
     app.dependency_overrides.clear()
-
-
-# =============================================================================
-# 🔹 АВТОРИЗОВАННЫЕ КЛИЕНТЫ (function scope)
-# =============================================================================
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -117,7 +85,6 @@ async def authenticated_client(client, test_user_data):
     reg = await client.post("/api/auth/register", json=test_user_data)
     reg_data = reg.json()
 
-    # 🔹 Гибкое извлечение access_token (поддерживает разные форматы):
     if (
         "data" in reg_data
         and isinstance(reg_data["data"], dict)
@@ -127,7 +94,6 @@ async def authenticated_client(client, test_user_data):
     elif "access_token" in reg_data:
         token = reg_data["access_token"]
     else:
-        # 🔹 Если токен не найден — выводим ответ для отладки:
         pytest.fail(f"access_token not found in response: {reg_data}")
 
     client.headers["Authorization"] = f"Bearer {token}"
@@ -141,7 +107,6 @@ async def admin_client(client, test_admin_data):
     reg = await client.post("/api/auth/register", json=test_admin_data)
     reg_data = reg.json()
 
-    # 🔹 Гибкое извлечение access_token:
     if (
         "data" in reg_data
         and isinstance(reg_data["data"], dict)
@@ -158,9 +123,6 @@ async def admin_client(client, test_admin_data):
     client.headers.pop("Authorization", None)
 
 
-# =============================================================================
-# 🔹 ТЕСТОВЫЕ ДАННЫЕ (синхронные фикстуры — обычный @pytest.fixture)
-# =============================================================================
 @pytest.fixture
 def test_user_data():
     """Данные для регистрации обычного пользователя"""
@@ -199,9 +161,6 @@ def test_poll_data():
     }
 
 
-# =============================================================================
-# 🔹 ТЕСТОВЫЙ ФАЙЛ ДЛЯ БАННЕРОВ
-# =============================================================================
 @pytest_asyncio.fixture(scope="function")
 async def test_banner_file(test_session: AsyncSession):
     """
@@ -212,28 +171,24 @@ async def test_banner_file(test_session: AsyncSession):
     from src.models.user import User, UserRole
     from sqlalchemy import select
 
-    # 🔹 Шаг 1: Создаём тестового пользователя (если нужно)
     test_student_id = "FILE_TEST_USER_9999"
 
-    # Проверяем, существует ли уже пользователь
     existing_user = await test_session.execute(
         select(User).where(User.student_id == test_student_id)
     )
     user = existing_user.scalar_one_or_none()
 
     if not user:
-        # Создаём нового пользователя
         user = User(
             student_id=test_student_id,
             name="File Test User",
             faculty="Test Faculty",
-            password_hash="dummy_hash",  # Не используется в тестах
+            password_hash="dummy_hash",
             role=UserRole.USER,
         )
         test_session.add(user)
-        await test_session.flush()  # Получаем user.id
+        await test_session.flush()
 
-    # 🔹 Шаг 2: Создаём файл с валидным uploaded_by
     file_meta = FileMetadata(
         id=9999,
         entity_type="poll",
@@ -243,7 +198,7 @@ async def test_banner_file(test_session: AsyncSession):
         original_filename="test_banner.jpg",
         content_type="image/jpeg",
         size_bytes=1024,
-        uploaded_by=test_student_id,  # ← Используем реального пользователя!
+        uploaded_by=test_student_id,
     )
 
     test_session.add(file_meta)
@@ -252,12 +207,9 @@ async def test_banner_file(test_session: AsyncSession):
 
     yield file_meta
 
-    # 🔹 Очищаем после теста — ИСПРАВЛЕНИЕ: except Exception вместо bare except
     try:
         await test_session.delete(file_meta)
-        # Не удаляем пользователя — он может использоваться другими тестами
         await test_session.commit()
-    except Exception as e:  # ✅ E722 fix: указываем тип исключения
-        # Логируем, но не ломаем тест (ошибка очистки — не критична)
+    except Exception as e:
         print(f"Warning: cleanup failed for test_banner_file: {e}")
         await test_session.rollback()
