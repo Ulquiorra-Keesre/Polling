@@ -1,13 +1,14 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from src.database.connection import Base
 from typing import List
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from src.models.vote import Vote
+    from src.models.file import FileMetadata
 
 
 class Poll(Base):
@@ -22,24 +23,21 @@ class Poll(Base):
     total_votes = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # 🔹 Баннер (опционально)
     banner_file_id = Column(Integer, ForeignKey("files.id"), nullable=True)
-    banner = relationship(
+    banner: Mapped[Optional["FileMetadata"]] = relationship(
         "FileMetadata",
         foreign_keys=[banner_file_id],
         lazy="select",
         back_populates="polls_as_banner",
     )
 
-    # 🔹 Мягкое удаление
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
-    # 🔹 Связи
-    options: List["Option"] = relationship(
+    options: Mapped[list["Option"]] = relationship(
         "Option", back_populates="poll", cascade="all, delete-orphan", lazy="select"
     )
-    votes: List["Vote"] = relationship("Vote", back_populates="poll", lazy="select")
+    votes: Mapped[list["Vote"]] = relationship("Vote", back_populates="poll", lazy="select")
 
 
 class Option(Base):
@@ -54,8 +52,7 @@ class Option(Base):
     text = Column(String, nullable=False)
     votes = Column(Integer, default=0)
 
-    # 🔹 Связи
-    poll: "Poll" = relationship("Poll", back_populates="options")
-    votes_entries: List["Vote"] = relationship(
+    poll: Mapped["Poll"] = relationship("Poll", back_populates="options")
+    votes_entries: Mapped[list["Vote"]] = relationship(
         "Vote", back_populates="option", lazy="select"
     )

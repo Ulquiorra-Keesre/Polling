@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, List
 from sqlalchemy import Column, Integer, String, DateTime, Enum
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from src.database.connection import Base
 import enum
@@ -33,16 +33,16 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    votes: List["Vote"] = relationship(
+    votes: Mapped[list["Vote"]] = relationship(
         "Vote", back_populates="user", cascade="all, delete-orphan", lazy="select"
     )
-    refresh_tokens: List["RefreshToken"] = relationship(
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",
     )
-    uploaded_files: List["FileMetadata"] = relationship(
+    uploaded_files: Mapped[list["FileMetadata"]] = relationship(
         "FileMetadata",
         back_populates="uploader",
         cascade="all, delete-orphan",
