@@ -34,12 +34,18 @@ class UserResponse(BaseModel):
     student_id: str
     name: str
     faculty: str
-    role: UserRole  # ← Строгая типизация через Enum
+    role: UserRole
     created_at: datetime
 
     model_config = ConfigDict(
         from_attributes=True, use_enum_values=True
-    )  # ✅ Pydantic v2 style
+    )
+
+
+class UserUpdateRole(BaseModel):
+    """Схема для обновления роли пользователя (только админ)"""
+    role: UserRole
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Token(BaseModel):

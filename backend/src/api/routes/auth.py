@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Request
-from src.models.user import UserUpdateRole, UserRole
+from src.models.user import UserRole
 from src.services.auth_service import AuthService
 from src.api.dependencies import DatabaseDep, CurrentUser, CurrentAdmin
-from src.schemas.user import Token, UserRegister, UserLogin
+from src.schemas.user import Token, UserRegister, UserLogin, UserUpdateRole
 
 router = APIRouter()
 
