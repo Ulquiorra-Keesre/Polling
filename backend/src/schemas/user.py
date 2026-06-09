@@ -37,13 +37,12 @@ class UserResponse(BaseModel):
     role: UserRole
     created_at: datetime
 
-    model_config = ConfigDict(
-        from_attributes=True, use_enum_values=True
-    )
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 
 class UserUpdateRole(BaseModel):
     """Схема для обновления роли пользователя (только админ)"""
+
     role: UserRole
     model_config = ConfigDict(use_enum_values=True)
 
